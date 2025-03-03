@@ -56,6 +56,8 @@ const TaskTimeline = () => {
   // Add state for cell data and dropdown
   const [cellsData, setCellsData] = useState<CellData[]>([]);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  // Add state for status popup
+  const [statusPopup, setStatusPopup] = useState<{ taskId: string, x: number, y: number } | null>(null);
 
   // Add ref for the timeline wrapper
   const timelineWrapperRef = useRef<HTMLDivElement>(null);
@@ -91,12 +93,19 @@ const TaskTimeline = () => {
   // Handle click outside to clear selection
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
+      // Check if the click is on the dropdown or the Set Stage button
+      const target = event.target as HTMLElement;
+      const isDropdownClick = target.closest('.stage-dropdown') !== null;
+      const isSetStageButtonClick = target.closest('.action-button') !== null;
+      
       if (
         timelineWrapperRef.current && 
         !timelineWrapperRef.current.contains(event.target as Node) &&
-        selectedCells.length > 0
+        selectedCells.length > 0 &&
+        !isDropdownClick && 
+        !isSetStageButtonClick
       ) {
-        // Clear selection when clicking outside the timeline
+        // Clear selection when clicking outside the timeline and not on dropdown elements
         setSelectedCells([]);
         setIsDropdownOpen(false);
       }
@@ -281,8 +290,34 @@ const TaskTimeline = () => {
     { name: 'May', days: 31 },
     { name: 'June', days: 30 },
     { name: 'July', days: 31 },
-    { name: 'August', days: 31 }
+    { name: 'August', days: 31 },
+    { name: 'September', days: 30 },
+    { name: 'October', days: 31 },
+    { name: 'November', days: 30 },
+    { name: 'December', days: 31 }
   ];
+
+  // Helper function to determine if a day is a weekend (Saturday or Sunday)
+  const isWeekend = (month: string, day: number): boolean => {
+    // Get the current year
+    const year = new Date().getFullYear();
+    
+    // Map month name to month number (0-indexed)
+    const monthMap: { [key: string]: number } = {
+      'January': 0, 'February': 1, 'March': 2, 'April': 3,
+      'May': 4, 'June': 5, 'July': 6, 'August': 7,
+      'September': 8, 'October': 9, 'November': 10, 'December': 11
+    };
+    
+    // Create a date object for the given month and day
+    const date = new Date(year, monthMap[month], day);
+    
+    // Get the day of the week (0 = Sunday, 6 = Saturday)
+    const dayOfWeek = date.getDay();
+    
+    // Return true if it's Saturday (6) or Sunday (0)
+    return dayOfWeek === 0 || dayOfWeek === 6;
+  };
 
   // Get cell stage if it exists
   const getCellStage = (taskId: string, month: string, day: number): CellStage => {
@@ -324,7 +359,48 @@ const TaskTimeline = () => {
     
     setCellsData(updatedCellsData);
     setIsDropdownOpen(false);
+    // We don't clear the selection, so cells remain selected after setting the stage
   };
+
+  // Handle status cell click to show popup
+  const handleStatusCellClick = (taskId: string, event: React.MouseEvent) => {
+    // Get position for the popup
+    const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
+    
+    // Calculate position relative to the viewport
+    const scrollTop = window.scrollY || document.documentElement.scrollTop;
+    const scrollLeft = window.scrollX || document.documentElement.scrollLeft;
+    
+    setStatusPopup({
+      taskId,
+      x: rect.left + scrollLeft,
+      y: rect.bottom + scrollTop
+    });
+  };
+
+  // Handle status update
+  const handleStatusUpdate = (taskId: string, newStatus: 'In progress' | 'Not started' | 'Completed' | 'Failed') => {
+    setTasks(prevTasks => 
+      prevTasks.map(task => 
+        task.id === taskId ? { ...task, status: newStatus } : task
+      )
+    );
+    setStatusPopup(null);
+  };
+
+  // Close status popup when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (statusPopup && !(event.target as Element).closest('.status-popup')) {
+        setStatusPopup(null);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [statusPopup]);
 
   return (
     <div className="task-timeline">
@@ -334,35 +410,55 @@ const TaskTimeline = () => {
         <div className="floating-action-container">
           <button 
             className={`action-button ${selectedCells.length === 0 ? 'disabled' : ''}`}
-            onClick={() => selectedCells.length > 0 && setIsDropdownOpen(!isDropdownOpen)}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (selectedCells.length > 0) {
+                setIsDropdownOpen(!isDropdownOpen);
+              }
+            }}
             disabled={selectedCells.length === 0}
           >
             Set Stage
           </button>
           
           {isDropdownOpen && (
-            <div className="stage-dropdown">
+            <div 
+              className="stage-dropdown"
+              onClick={(e) => e.stopPropagation()}
+            >
               <div 
                 className="stage-option planning-option"
-                onClick={() => handleStageChange('planning')}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleStageChange('planning');
+                }}
               >
                 Planning Stage
               </div>
               <div 
                 className="stage-option completed-option"
-                onClick={() => handleStageChange('completed')}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleStageChange('completed');
+                }}
               >
                 Completed Stage
               </div>
               <div 
                 className="stage-option failed-option"
-                onClick={() => handleStageChange('failed')}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleStageChange('failed');
+                }}
               >
                 Failed Stage
               </div>
               <div 
                 className="stage-option clear-option"
-                onClick={() => handleStageChange(null)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleStageChange(null);
+                }}
               >
                 Clear Stage
               </div>
@@ -380,7 +476,10 @@ const TaskTimeline = () => {
             {tasks.map(task => (
               <div key={task.id} className="task-item">
                 <div className="task-name">{task.name}</div>
-                <div className={`task-status status-${task.status.toLowerCase().replace(' ', '-')}`}>
+                <div 
+                  className={`task-status status-${task.status.toLowerCase().replace(' ', '-')}`}
+                  onClick={(e) => handleStatusCellClick(task.id, e)}
+                >
                   {task.status}
                 </div>
               </div>
@@ -395,17 +494,20 @@ const TaskTimeline = () => {
           <div className="month-headers">
             {months.map((month, monthIndex) => (
               <React.Fragment key={monthIndex}>
-                {Array.from({ length: month.days }, (_, i) => i + 1).map(day => (
-                  <div 
-                    key={`${month.name}-${day}`} 
-                    className={`month-day-header ${day === 1 ? 'first-of-month' : ''} ${
-                      month.name === selectedMonth && day === selectedDay ? 'selected-header' : ''
-                    }`}
-                    data-month={month.name}
-                  >
-                    {day}
-                  </div>
-                ))}
+                {Array.from({ length: month.days }, (_, i) => i + 1).map(day => {
+                  const isWeekendDay = isWeekend(month.name, day);
+                  return (
+                    <div 
+                      key={`${month.name}-${day}`} 
+                      className={`month-day-header ${day === 1 ? 'first-of-month' : ''} ${
+                        month.name === selectedMonth && day === selectedDay ? 'selected-header' : ''
+                      } ${isWeekendDay ? 'weekend' : ''}`}
+                      data-month={month.name}
+                    >
+                      {day}
+                    </div>
+                  );
+                })}
               </React.Fragment>
             ))}
           </div>
@@ -413,9 +515,17 @@ const TaskTimeline = () => {
             {/* Day numbers row */}
             <div className="day-numbers-row">
               {months.map((month) => (
-                Array.from({ length: month.days }, (_, i) => i + 1).map(day => (
-                  <div key={`${month.name}-${day}`} className="day-number">{day}</div>
-                ))
+                Array.from({ length: month.days }, (_, i) => i + 1).map(day => {
+                  const isWeekendDay = isWeekend(month.name, day);
+                  return (
+                    <div 
+                      key={`${month.name}-${day}`} 
+                      className={`day-number ${isWeekendDay ? 'weekend' : ''}`}
+                    >
+                      {day}
+                    </div>
+                  );
+                })
               ))}
             </div>
             
@@ -431,11 +541,12 @@ const TaskTimeline = () => {
                       const isSelected = isCellSelected(task.id, month.name, day);
                       const cellStage = getCellStage(task.id, month.name, day);
                       const stageClass = cellStage ? `stage-${cellStage}` : '';
+                      const isWeekendDay = isWeekend(month.name, day);
                       
                       return (
                         <div 
                           key={day} 
-                          className={`timeline-cell ${isSelected ? 'selected' : ''} ${stageClass}`}
+                          className={`timeline-cell ${isSelected ? 'selected' : ''} ${stageClass} ${isWeekendDay ? 'weekend' : ''}`}
                           onMouseDown={() => handleCellMouseDown(task.id, month.name, day)}
                           onMouseEnter={() => handleCellMouseEnter(task.id, month.name, day)}
                         >
@@ -456,6 +567,44 @@ const TaskTimeline = () => {
         setNewTaskName={setNewTaskName} 
         addTask={addTask} 
       />
+
+      {/* Status Popup */}
+      {statusPopup && (
+        <div 
+          className="status-popup"
+          style={{
+            position: 'absolute',
+            left: `${statusPopup.x}px`,
+            top: `${statusPopup.y}px`,
+            zIndex: 1000
+          }}
+        >
+          <div 
+            className="status-option in-progress-option"
+            onClick={() => handleStatusUpdate(statusPopup.taskId, 'In progress')}
+          >
+            In progress
+          </div>
+          <div 
+            className="status-option not-started-option"
+            onClick={() => handleStatusUpdate(statusPopup.taskId, 'Not started')}
+          >
+            Not started
+          </div>
+          <div 
+            className="status-option completed-option"
+            onClick={() => handleStatusUpdate(statusPopup.taskId, 'Completed')}
+          >
+            Completed
+          </div>
+          <div 
+            className="status-option failed-option"
+            onClick={() => handleStatusUpdate(statusPopup.taskId, 'Failed')}
+          >
+            Failed
+          </div>
+        </div>
+      )}
     </div>
   );
 };
