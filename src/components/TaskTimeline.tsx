@@ -59,6 +59,8 @@ const TaskTimeline = () => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   // Add state for status popup
   const [statusPopup, setStatusPopup] = useState<{ taskId: string, x: number, y: number } | null>(null);
+  // Add state for task deletion
+  const [taskToDelete, setTaskToDelete] = useState<string | null>(null);
 
   // Add ref for the timeline wrapper
   const timelineWrapperRef = useRef<HTMLDivElement>(null);
@@ -280,6 +282,34 @@ const TaskTimeline = () => {
     
     setTasks([...tasks, newTask]);
     setNewTaskName('');
+  };
+
+  // Handle task deletion
+  const handleDeleteTask = (taskId: string) => {
+    // Show confirmation dialog
+    setTaskToDelete(taskId);
+  };
+
+  // Confirm task deletion
+  const confirmDeleteTask = () => {
+    if (taskToDelete) {
+      // Remove the task
+      setTasks(prevTasks => prevTasks.filter(task => task.id !== taskToDelete));
+      
+      // Clear any selected cells for this task
+      setSelectedCells(prevSelected => prevSelected.filter(cell => cell.taskId !== taskToDelete));
+      
+      // Clear any cell data for this task
+      setCellsData(prevCellData => prevCellData.filter(cell => cell.taskId !== taskToDelete));
+      
+      // Reset the task to delete
+      setTaskToDelete(null);
+    }
+  };
+
+  // Cancel task deletion
+  const cancelDeleteTask = () => {
+    setTaskToDelete(null);
   };
 
   // Define months for the timeline
@@ -506,6 +536,7 @@ const TaskTimeline = () => {
           <div className="task-list" ref={taskListRef}>
             {tasks.map(task => (
               <div key={task.id} className="task-item">
+                <div className="delete-task-button" onClick={() => handleDeleteTask(task.id)}>×</div>
                 <div className="task-name">{task.name}</div>
                 <div 
                   className={`task-status status-${task.status.toLowerCase().replace(' ', '-')}`}
@@ -640,6 +671,24 @@ const TaskTimeline = () => {
             onClick={() => handleStatusUpdate(statusPopup.taskId, 'Failed')}
           >
             Failed
+          </div>
+        </div>
+      )}
+
+      {/* Delete Task Confirmation Dialog */}
+      {taskToDelete && (
+        <div className="confirmation-dialog-overlay">
+          <div className="confirmation-dialog">
+            <div className="confirmation-dialog-header">
+              <h3>Delete Task</h3>
+            </div>
+            <div className="confirmation-dialog-content">
+              <p>Are you sure you want to delete this task? This action cannot be undone.</p>
+            </div>
+            <div className="confirmation-dialog-footer">
+              <button className="cancel-button" onClick={cancelDeleteTask}>Cancel</button>
+              <button className="delete-button" onClick={confirmDeleteTask}>Delete</button>
+            </div>
           </div>
         </div>
       )}

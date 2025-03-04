@@ -194,20 +194,55 @@
 
 .task-item {
   display: flex;
+  align-items: center;
+  padding: 10px 0;
   border-bottom: 1px solid #e0e0e0;
-  height: 40px; /* Increased height for better readability */
+  position: relative;
+  min-height: 40px;
+}
+
+/* Delete task button */
+.delete-task-button {
+  position: absolute;
+  top: 5px;
+  left: 5px;
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #f44336;
+  color: white;
+  border-radius: 50%;
+  font-size: 14px;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.2s;
+  z-index: 10;
+  visibility: hidden;
+}
+
+.task-item:hover .delete-task-button {
+  opacity: 0.7;
+  visibility: visible;
+}
+
+.delete-task-button:hover {
+  opacity: 1;
 }
 
 .task-name {
   flex: 1;
   padding: 0 10px;
-  display: flex;
-  align-items: center;
-  min-width: 200px;
-  border-right: 1px solid #e0e0e0;
+  padding-left: 25px; /* Make room for the delete button */
+  font-size: 0.9rem;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  max-width: 200px;
+  display: flex;
+  align-items: center;
+  border-right: 1px solid #e0e0e0;
   font-weight: 500;
   color: #333;
 }
@@ -843,4 +878,67 @@
 
 .cancel-button:hover {
   background-color: #e0e0e0;
+}
+
+/* Confirmation Dialog */
+.confirmation-dialog-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.confirmation-dialog {
+  background-color: white;
+  border-radius: 8px;
+  width: 90%;
+  max-width: 400px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  display: flex;
+  flex-direction: column;
+}
+
+.confirmation-dialog-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid #eee;
+}
+
+.confirmation-dialog-header h3 {
+  margin: 0;
+  font-size: 18px;
+  color: #333;
+}
+
+.confirmation-dialog-content {
+  padding: 20px;
+  color: #555;
+}
+
+.confirmation-dialog-footer {
+  padding: 16px 20px;
+  border-top: 1px solid #eee;
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.delete-button {
+  background-color: #f44336;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 0.2s;
+}
+
+.delete-button:hover {
+  background-color: #d32f2f;
 }
