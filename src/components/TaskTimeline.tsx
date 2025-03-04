@@ -2,11 +2,12 @@ import React, { useState, useRef, useEffect } from 'react';
 import TimelineHeader from './TimelineHeader';
 import TaskRow from './TaskRow';
 import AddTaskForm from './AddTaskForm';
+import ActionsPanel from './ActionsPanel';
 
 export type Task = {
   id: string;
   name: string;
-  status: 'In progress' | 'Not started' | 'Completed';
+  status: 'In progress' | 'Not started' | 'Completed' | 'Failed';
 };
 
 // Type for cell stage
@@ -388,6 +389,25 @@ const TaskTimeline = () => {
     setStatusPopup(null);
   };
 
+  // Navigate to today's date
+  const navigateToToday = () => {
+    const today = new Date();
+    const currentMonth = today.toLocaleString('default', { month: 'long' });
+    const currentDay = today.getDate();
+    
+    // Set the selected month and day to today
+    setSelectedMonth(currentMonth);
+    setSelectedDay(currentDay);
+    
+    // Find the element for today's date and scroll to it
+    setTimeout(() => {
+      const todayElement = document.querySelector(`.month-day-header[data-month="${currentMonth}"][data-day="${currentDay}"]`);
+      if (todayElement) {
+        todayElement.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
+      }
+    }, 100);
+  };
+
   // Close status popup when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -406,64 +426,75 @@ const TaskTimeline = () => {
     <div className="task-timeline">
       <div className="timeline-header-container">
         <h2 className="timeline-title">Task Timeline</h2>
-        {/* Floating Action Button and Dropdown - Always visible but disabled when no selection */}
-        <div className="floating-action-container">
+        
+        <div className="header-actions">
+          {/* Today button */}
           <button 
-            className={`action-button ${selectedCells.length === 0 ? 'disabled' : ''}`}
-            onClick={(e) => {
-              e.stopPropagation();
-              if (selectedCells.length > 0) {
-                setIsDropdownOpen(!isDropdownOpen);
-              }
-            }}
-            disabled={selectedCells.length === 0}
+            className="today-button"
+            onClick={navigateToToday}
           >
-            Set Stage
+            Today
           </button>
           
-          {isDropdownOpen && (
-            <div 
-              className="stage-dropdown"
-              onClick={(e) => e.stopPropagation()}
+          {/* Floating Action Button and Dropdown - Always visible but disabled when no selection */}
+          <div className="floating-action-container">
+            <button 
+              className={`action-button ${selectedCells.length === 0 ? 'disabled' : ''}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (selectedCells.length > 0) {
+                  setIsDropdownOpen(!isDropdownOpen);
+                }
+              }}
+              disabled={selectedCells.length === 0}
             >
+              Set Stage
+            </button>
+            
+            {isDropdownOpen && (
               <div 
-                className="stage-option planning-option"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleStageChange('planning');
-                }}
+                className="stage-dropdown"
+                onClick={(e) => e.stopPropagation()}
               >
-                Planning Stage
+                <div 
+                  className="stage-option planning-option"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleStageChange('planning');
+                  }}
+                >
+                  Planning Stage
+                </div>
+                <div 
+                  className="stage-option completed-option"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleStageChange('completed');
+                  }}
+                >
+                  Completed Stage
+                </div>
+                <div 
+                  className="stage-option failed-option"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleStageChange('failed');
+                  }}
+                >
+                  Failed Stage
+                </div>
+                <div 
+                  className="stage-option clear-option"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleStageChange(null);
+                  }}
+                >
+                  Clear Stage
+                </div>
               </div>
-              <div 
-                className="stage-option completed-option"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleStageChange('completed');
-                }}
-              >
-                Completed Stage
-              </div>
-              <div 
-                className="stage-option failed-option"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleStageChange('failed');
-                }}
-              >
-                Failed Stage
-              </div>
-              <div 
-                className="stage-option clear-option"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleStageChange(null);
-                }}
-              >
-                Clear Stage
-              </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </div>
       <div className="timeline-wrapper" ref={timelineWrapperRef}>
@@ -503,6 +534,7 @@ const TaskTimeline = () => {
                         month.name === selectedMonth && day === selectedDay ? 'selected-header' : ''
                       } ${isWeekendDay ? 'weekend' : ''}`}
                       data-month={month.name}
+                      data-day={day}
                     >
                       {day}
                     </div>
@@ -566,6 +598,12 @@ const TaskTimeline = () => {
         newTaskName={newTaskName} 
         setNewTaskName={setNewTaskName} 
         addTask={addTask} 
+      />
+
+      <ActionsPanel 
+        tasks={tasks}
+        cellsData={cellsData}
+        months={months}
       />
 
       {/* Status Popup */}
