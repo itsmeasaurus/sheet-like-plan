@@ -61,6 +61,11 @@ const TaskTimeline = () => {
   const [statusPopup, setStatusPopup] = useState<{ taskId: string, x: number, y: number } | null>(null);
   // Add state for task deletion
   const [taskToDelete, setTaskToDelete] = useState<string | null>(null);
+  // Add state for editable title and header
+  const [title, setTitle] = useState<string>("Task Timeline");
+  const [isEditingTitle, setIsEditingTitle] = useState<boolean>(false);
+  const [headerText, setHeaderText] = useState<string>("Skills To Learn");
+  const [isEditingHeader, setIsEditingHeader] = useState<boolean>(false);
 
   // Add ref for the timeline wrapper
   const timelineWrapperRef = useRef<HTMLDivElement>(null);
@@ -312,6 +317,50 @@ const TaskTimeline = () => {
     setTaskToDelete(null);
   };
 
+  // Handle title click to make it editable
+  const handleTitleClick = () => {
+    setIsEditingTitle(true);
+  };
+
+  // Handle title change
+  const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setTitle(e.target.value);
+  };
+
+  // Handle title blur to save changes
+  const handleTitleBlur = () => {
+    setIsEditingTitle(false);
+  };
+
+  // Handle title key down to save on Enter
+  const handleTitleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      setIsEditingTitle(false);
+    }
+  };
+
+  // Handle header click to make it editable
+  const handleHeaderClick = () => {
+    setIsEditingHeader(true);
+  };
+
+  // Handle header change
+  const handleHeaderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setHeaderText(e.target.value);
+  };
+
+  // Handle header blur to save changes
+  const handleHeaderBlur = () => {
+    setIsEditingHeader(false);
+  };
+
+  // Handle header key down to save on Enter
+  const handleHeaderKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      setIsEditingHeader(false);
+    }
+  };
+
   // Define months for the timeline
   const months = [
     { name: 'January', days: 31 },
@@ -455,7 +504,21 @@ const TaskTimeline = () => {
   return (
     <div className="task-timeline">
       <div className="timeline-header-container">
-        <h2 className="timeline-title">Task Timeline</h2>
+        {isEditingTitle ? (
+          <input
+            type="text"
+            className="editable-title"
+            value={title}
+            onChange={handleTitleChange}
+            onBlur={handleTitleBlur}
+            onKeyDown={handleTitleKeyDown}
+            autoFocus
+          />
+        ) : (
+          <h2 className="timeline-title" onClick={handleTitleClick}>
+            {title}
+          </h2>
+        )}
         
         <div className="header-actions">
           {/* Today button */}
@@ -530,7 +593,22 @@ const TaskTimeline = () => {
       <div className="timeline-wrapper" ref={timelineWrapperRef}>
         <div className="fixed-columns">
           <div className="column-headers">
-            <div className="task-header">Skills To Learn</div>
+            {isEditingHeader ? (
+              <input
+                type="text"
+                className="editable-header"
+                value={headerText}
+                onChange={handleHeaderChange}
+                onBlur={handleHeaderBlur}
+                onKeyDown={handleHeaderKeyDown}
+                autoFocus
+                style={{ textAlign: 'center' }}
+              />
+            ) : (
+              <div className="task-header" onClick={handleHeaderClick}>
+                {headerText}
+              </div>
+            )}
             <div className="status-header">Status</div>
           </div>
           <div className="task-list" ref={taskListRef}>
