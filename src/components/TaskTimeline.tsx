@@ -30,16 +30,11 @@ type CellData = {
 };
 
 const TaskTimeline = () => {
-  const [tasks, setTasks] = useState<Task[]>([
-    { id: '1', name: 'AWS Learning', status: 'In progress' },
-    { id: '2', name: 'NodeJS Review & Testing', status: 'Not started' },
-    { id: '3', name: 'Typescript', status: 'Not started' },
-    { id: '4', name: 'NextJS', status: 'Not started' },
-    { id: '5', name: 'ReactJS', status: 'Not started' },
-    { id: '6', name: 'Improving English', status: 'In progress' },
-    { id: '7', name: 'Learning Thai', status: 'In progress' },
-    { id: '8', name: 'Learning German', status: 'In progress' },
-  ]);
+  const [tasks, setTasks] = useState<Task[]>(() => {
+    // Try to get tasks from localStorage
+    const savedTasks = localStorage.getItem('tasks');
+    return savedTasks ? JSON.parse(savedTasks) : [];
+  });
 
   const [newTaskName, setNewTaskName] = useState('');
   const taskListRef = useRef<HTMLDivElement>(null);
@@ -55,21 +50,69 @@ const TaskTimeline = () => {
   const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
   // Add state for cell data and dropdown
-  const [cellsData, setCellsData] = useState<CellData[]>([]);
+  const [cellsData, setCellsData] = useState<CellData[]>(() => {
+    // Try to get cell data from localStorage
+    const savedCellsData = localStorage.getItem('cellsData');
+    return savedCellsData ? JSON.parse(savedCellsData) : [];
+  });
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   // Add state for status popup
   const [statusPopup, setStatusPopup] = useState<{ taskId: string, x: number, y: number } | null>(null);
   // Add state for task deletion
   const [taskToDelete, setTaskToDelete] = useState<string | null>(null);
   // Add state for editable title and header
-  const [title, setTitle] = useState<string>("Task Timeline");
+  const [title, setTitle] = useState<string>(() => {
+    // Try to get title from localStorage
+    const savedTitle = localStorage.getItem('title');
+    return savedTitle || "Task Timeline";
+  });
   const [isEditingTitle, setIsEditingTitle] = useState<boolean>(false);
-  const [headerText, setHeaderText] = useState<string>("Skills To Learn");
+  const [headerText, setHeaderText] = useState<string>(() => {
+    // Try to get header text from localStorage
+    const savedHeaderText = localStorage.getItem('headerText');
+    return savedHeaderText || "Skills To Learn";
+  });
   const [isEditingHeader, setIsEditingHeader] = useState<boolean>(false);
+
+  // Add state for quick select popup
+  const [showQuickSelectPopup, setShowQuickSelectPopup] = useState<boolean>(false);
+  const [quickSelectData, setQuickSelectData] = useState<{
+    taskId: string | null;
+    months: string[];
+    dayType: 'all' | 'weekdays' | 'weekends';
+    stage: CellStage;
+  }>({
+    taskId: null,
+    months: [],
+    dayType: 'weekdays',
+    stage: 'planning'
+  });
+  const [showQuickSelectConfirmation, setShowQuickSelectConfirmation] = useState<boolean>(false);
+  const [affectedCells, setAffectedCells] = useState<CellData[]>([]);
 
   // Add ref for the timeline wrapper
   const timelineWrapperRef = useRef<HTMLDivElement>(null);
   
+  // Save tasks to localStorage whenever they change
+  useEffect(() => {
+    localStorage.setItem('tasks', JSON.stringify(tasks));
+  }, [tasks]);
+
+  // Save cell data to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem('cellsData', JSON.stringify(cellsData));
+  }, [cellsData]);
+
+  // Save title to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem('title', title);
+  }, [title]);
+
+  // Save header text to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem('headerText', headerText);
+  }, [headerText]);
+
   // Synchronize scrolling between task list and timeline grid
   useEffect(() => {
     const taskList = taskListRef.current;
@@ -460,12 +503,111 @@ const TaskTimeline = () => {
 
   // Handle status update
   const handleStatusUpdate = (taskId: string, newStatus: 'In progress' | 'Not started' | 'Completed' | 'Failed') => {
+    // Update the task status
     setTasks(prevTasks => 
       prevTasks.map(task => 
         task.id === taskId ? { ...task, status: newStatus } : task
       )
     );
+    
+    // Close the status popup
     setStatusPopup(null);
+  };
+
+  // Handle quick select apply
+  const handleQuickSelectApply = () => {
+    if (!quickSelectData.taskId || quickSelectData.months.length === 0) {
+      return; // Ensure a task and at least one month is selected
+    }
+
+    // Calculate which days to apply based on the dayType
+    const newCellsData: CellData[] = [];
+    const existingCellsToUpdate: CellData[] = [];
+    
+    quickSelectData.months.forEach(month => {
+      const daysInMonth = months.find(m => m.name === month)?.days || 30;
+      
+      for (let day = 1; day <= daysInMonth; day++) {
+        // Check if we should include this day based on dayType
+        const shouldInclude = 
+          quickSelectData.dayType === 'all' || 
+          (quickSelectData.dayType === 'weekdays' && !isWeekend(month, day)) ||
+          (quickSelectData.dayType === 'weekends' && isWeekend(month, day));
+        
+        if (shouldInclude && quickSelectData.taskId) {
+          // Check if cell data already exists
+          const existingCellIndex = cellsData.findIndex(
+            cell => cell.taskId === quickSelectData.taskId && cell.month === month && cell.day === day
+          );
+          
+          if (existingCellIndex >= 0) {
+            // If it exists and has a different stage, add to cells to update
+            if (cellsData[existingCellIndex].stage !== quickSelectData.stage) {
+              existingCellsToUpdate.push({
+                ...cellsData[existingCellIndex],
+                stage: quickSelectData.stage
+              });
+            }
+          } else {
+            // Add new cell data
+            newCellsData.push({
+              taskId: quickSelectData.taskId,
+              month,
+              day,
+              stage: quickSelectData.stage
+            });
+          }
+        }
+      }
+    });
+    
+    // Always show confirmation dialog if there are cells to update or create
+    if (existingCellsToUpdate.length > 0 || newCellsData.length > 0) {
+      setAffectedCells([...existingCellsToUpdate, ...newCellsData]);
+      setShowQuickSelectConfirmation(true);
+    } else {
+      // No cells to update or create
+      alert("No cells match your selection criteria. Please adjust your selection.");
+    }
+  };
+
+  // Apply quick select changes
+  const applyQuickSelect = (newCells: CellData[]) => {
+    // Update cell data
+    setCellsData(prevCellsData => {
+      const updatedCellsData = [...prevCellsData];
+      
+      newCells.forEach(newCell => {
+        const { taskId, month, day, stage } = newCell;
+        
+        // Check if cell data already exists
+        const existingCellIndex = updatedCellsData.findIndex(
+          cell => cell.taskId === taskId && cell.month === month && cell.day === day
+        );
+        
+        if (existingCellIndex >= 0) {
+          // Update existing cell data
+          updatedCellsData[existingCellIndex].stage = stage;
+        } else {
+          // Add new cell data
+          updatedCellsData.push(newCell);
+        }
+      });
+      
+      return updatedCellsData;
+    });
+    
+    // Close popups
+    setShowQuickSelectPopup(false);
+    setShowQuickSelectConfirmation(false);
+    setAffectedCells([]);
+  };
+
+  // Cancel quick select
+  const cancelQuickSelect = () => {
+    setShowQuickSelectPopup(false);
+    setShowQuickSelectConfirmation(false);
+    setAffectedCells([]);
   };
 
   // Navigate to today's date
@@ -527,6 +669,14 @@ const TaskTimeline = () => {
             onClick={navigateToToday}
           >
             Today
+          </button>
+          
+          {/* Quick Select Button */}
+          <button 
+            className="quick-select-button"
+            onClick={() => setShowQuickSelectPopup(true)}
+          >
+            ⚡ Quick Set
           </button>
           
           {/* Floating Action Button and Dropdown - Always visible but disabled when no selection */}
@@ -766,6 +916,223 @@ const TaskTimeline = () => {
             <div className="confirmation-dialog-footer">
               <button className="cancel-button" onClick={cancelDeleteTask}>Cancel</button>
               <button className="delete-button" onClick={confirmDeleteTask}>Delete</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Quick Select Popup */}
+      {showQuickSelectPopup && (
+        <div className="quick-select-popup-overlay">
+          <div className="quick-select-popup">
+            <div className="quick-select-popup-header">
+              <h3>Quick Set Tasks</h3>
+              <button className="close-button" onClick={cancelQuickSelect}>×</button>
+            </div>
+            <div className="quick-select-popup-content">
+              <div className="quick-select-section">
+                <h4>Select Task</h4>
+                <select 
+                  value={quickSelectData.taskId || ''} 
+                  onChange={(e) => setQuickSelectData({...quickSelectData, taskId: e.target.value || null})}
+                  className="quick-select-dropdown"
+                >
+                  <option value="">-- Select a task --</option>
+                  {tasks.length === 0 ? (
+                    <option value="" disabled>No tasks available. Please add tasks first.</option>
+                  ) : (
+                    tasks.map(task => (
+                      <option key={task.id} value={task.id}>{task.name}</option>
+                    ))
+                  )}
+                </select>
+                {tasks.length === 0 && (
+                  <div className="no-tasks-warning">
+                    No tasks available. Please add tasks using the form below.
+                  </div>
+                )}
+              </div>
+              
+              <div className="quick-select-section">
+                <h4>Select Months</h4>
+                <div className="checkbox-item select-all-item">
+                  <input 
+                    type="checkbox" 
+                    id="select-all-months"
+                    checked={quickSelectData.months.length === months.length}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        // Select all months
+                        setQuickSelectData({
+                          ...quickSelectData, 
+                          months: months.map(m => m.name)
+                        });
+                      } else {
+                        // Deselect all months
+                        setQuickSelectData({
+                          ...quickSelectData, 
+                          months: []
+                        });
+                      }
+                    }}
+                  />
+                  <label htmlFor="select-all-months"><strong>Select All Months</strong></label>
+                </div>
+                <div className="checkbox-grid">
+                  {months.map(month => (
+                    <div key={month.name} className="checkbox-item">
+                      <input 
+                        type="checkbox" 
+                        id={`month-${month.name}`}
+                        checked={quickSelectData.months.includes(month.name)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setQuickSelectData({
+                              ...quickSelectData, 
+                              months: [...quickSelectData.months, month.name]
+                            });
+                          } else {
+                            setQuickSelectData({
+                              ...quickSelectData, 
+                              months: quickSelectData.months.filter(m => m !== month.name)
+                            });
+                          }
+                        }}
+                      />
+                      <label htmlFor={`month-${month.name}`}>{month.name}</label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              
+              <div className="quick-select-section">
+                <h4>Select Days</h4>
+                <div className="radio-group">
+                  <div className="radio-item">
+                    <input 
+                      type="radio" 
+                      id="all-days" 
+                      name="day-type"
+                      checked={quickSelectData.dayType === 'all'}
+                      onChange={() => setQuickSelectData({...quickSelectData, dayType: 'all'})}
+                    />
+                    <label htmlFor="all-days">All Days</label>
+                  </div>
+                  <div className="radio-item">
+                    <input 
+                      type="radio" 
+                      id="weekdays" 
+                      name="day-type"
+                      checked={quickSelectData.dayType === 'weekdays'}
+                      onChange={() => setQuickSelectData({...quickSelectData, dayType: 'weekdays'})}
+                    />
+                    <label htmlFor="weekdays">Weekdays Only</label>
+                  </div>
+                  <div className="radio-item">
+                    <input 
+                      type="radio" 
+                      id="weekends" 
+                      name="day-type"
+                      checked={quickSelectData.dayType === 'weekends'}
+                      onChange={() => setQuickSelectData({...quickSelectData, dayType: 'weekends'})}
+                    />
+                    <label htmlFor="weekends">Weekends Only</label>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="quick-select-section">
+                <h4>Select Stage</h4>
+                <div className="radio-group">
+                  <div className="radio-item">
+                    <input 
+                      type="radio" 
+                      id="planning-stage" 
+                      name="stage-type"
+                      checked={quickSelectData.stage === 'planning'}
+                      onChange={() => setQuickSelectData({...quickSelectData, stage: 'planning'})}
+                    />
+                    <label htmlFor="planning-stage">Planning</label>
+                  </div>
+                  <div className="radio-item">
+                    <input 
+                      type="radio" 
+                      id="completed-stage" 
+                      name="stage-type"
+                      checked={quickSelectData.stage === 'completed'}
+                      onChange={() => setQuickSelectData({...quickSelectData, stage: 'completed'})}
+                    />
+                    <label htmlFor="completed-stage">Completed</label>
+                  </div>
+                  <div className="radio-item">
+                    <input 
+                      type="radio" 
+                      id="failed-stage" 
+                      name="stage-type"
+                      checked={quickSelectData.stage === 'failed'}
+                      onChange={() => setQuickSelectData({...quickSelectData, stage: 'failed'})}
+                    />
+                    <label htmlFor="failed-stage">Failed</label>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="quick-select-popup-footer">
+              <button className="cancel-button" onClick={cancelQuickSelect}>Cancel</button>
+              <button 
+                className="apply-button" 
+                onClick={handleQuickSelectApply}
+                disabled={!quickSelectData.taskId || quickSelectData.months.length === 0}
+              >
+                Quick Set
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Quick Select Confirmation Dialog */}
+      {showQuickSelectConfirmation && (
+        <div className="confirmation-dialog-overlay">
+          <div className="confirmation-dialog">
+            <div className="confirmation-dialog-header">
+              <h3>Confirm Quick Set</h3>
+            </div>
+            <div className="confirmation-dialog-content">
+              <p>
+                This action will affect {affectedCells.length} cells:
+              </p>
+              <ul>
+                <li>
+                  <strong>New cells to create:</strong> {
+                    affectedCells.filter(cell => 
+                      !cellsData.some(existingCell => 
+                        existingCell.taskId === cell.taskId && 
+                        existingCell.month === cell.month && 
+                        existingCell.day === cell.day
+                      )
+                    ).length
+                  }
+                </li>
+                <li>
+                  <strong>Existing cells to update:</strong> {
+                    affectedCells.filter(cell => 
+                      cellsData.some(existingCell => 
+                        existingCell.taskId === cell.taskId && 
+                        existingCell.month === cell.month && 
+                        existingCell.day === cell.day
+                      )
+                    ).length
+                  }
+                </li>
+              </ul>
+              <p>Do you want to proceed?</p>
+            </div>
+            <div className="confirmation-dialog-footer">
+              <button className="cancel-button" onClick={cancelQuickSelect}>Cancel</button>
+              <button className="apply-button" onClick={() => applyQuickSelect(affectedCells)}>
+                Proceed
+              </button>
             </div>
           </div>
         </div>

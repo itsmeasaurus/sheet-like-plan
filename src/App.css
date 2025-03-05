@@ -139,27 +139,153 @@
 
 /* Today button */
 .today-button {
-  background-color: #2196f3;
-  color: white;
-  border: none;
   padding: 6px 12px;
+  background-color: #f0f0f0;
+  border: 1px solid #ccc;
   border-radius: 4px;
   cursor: pointer;
-  font-size: 14px;
-  font-weight: 500;
-  margin-right: 15px;
-  transition: background-color 0.2s;
+  font-size: 0.9rem;
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: background-color 0.2s;
+  margin-right: 10px;
 }
 
 .today-button:hover {
-  background-color: #1976d2;
+  background-color: #e0e0e0;
 }
 
 .today-button:active {
-  background-color: #0d47a1;
+  background-color: #d0d0d0;
+}
+
+/* Quick Select Button */
+.quick-select-button {
+  padding: 6px 12px;
+  background-color: #4a90e2;
+  color: white;
+  border: 1px solid #3a80d2;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s;
+  margin-right: 10px;
+  gap: 5px;
+}
+
+.quick-select-button:hover {
+  background-color: #3a80d2;
+}
+
+.quick-select-button:active {
+  background-color: #2a70c2;
+}
+
+/* Quick Select Popup */
+.quick-select-popup-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.quick-select-popup {
+  background-color: white;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  width: 500px;
+  max-width: 90%;
+  max-height: 90vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.quick-select-popup-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid #eee;
+}
+
+.quick-select-popup-header h3 {
+  margin: 0;
+  font-size: 1.2rem;
+  color: #333;
+}
+
+.quick-select-popup-content {
+  padding: 20px;
+  overflow-y: auto;
+}
+
+.quick-select-section {
+  margin-bottom: 20px;
+}
+
+.quick-select-section h4 {
+  margin: 0 0 10px 0;
+  font-size: 1rem;
+  color: #555;
+}
+
+.quick-select-dropdown {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 14px;
+  margin-bottom: 10px;
+}
+
+.no-tasks-warning {
+  color: #e74c3c;
+  font-size: 13px;
+  margin-top: 5px;
+  padding: 5px 10px;
+  background-color: #fdecea;
+  border-radius: 4px;
+  border-left: 3px solid #e74c3c;
+}
+
+.quick-select-popup-footer {
+  display: flex;
+  justify-content: flex-end;
+  padding: 16px 20px;
+  border-top: 1px solid #eee;
+  gap: 10px;
+}
+
+.apply-button {
+  padding: 8px 16px;
+  background-color: #4a90e2;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background-color 0.2s;
+}
+
+.apply-button:hover {
+  background-color: #3a80d2;
+}
+
+.apply-button:disabled {
+  background-color: #cccccc;
+  cursor: not-allowed;
+  opacity: 0.7;
 }
 
 .timeline-wrapper {
@@ -562,7 +688,7 @@
 .month-cells[data-month="July"],
 .month-cells[data-month="September"],
 .month-cells[data-month="November"] {
-  background-color: #ffe6e1; /* Specific color requested */
+  background-color: #dfe8f7; /* Specific color requested */
 }
 
 /* Add color to month headers as well for consistency */
@@ -572,7 +698,7 @@
 .month-header[data-month="July"],
 .month-header[data-month="September"],
 .month-header[data-month="November"] {
-  background-color: #ffe6e1; /* Same color for headers */
+  background-color: #fff; /* Same color for headers */
 }
 
 /* Add color to all day headers in the specified months */
@@ -582,7 +708,7 @@
 .month-day-header[data-month="July"],
 .month-day-header[data-month="September"],
 .month-day-header[data-month="November"] {
-  background-color: #ffe6e1; /* Same color for all days */
+  background-color: #fff; /* Same color for all days */
 }
 
 /* Remove the styling for even months */
@@ -912,8 +1038,15 @@
 
 .checkbox-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  grid-template-columns: repeat(3, 1fr);
   gap: 10px;
+  margin-top: 10px;
+}
+
+.select-all-item {
+  margin-bottom: 10px;
+  padding-bottom: 5px;
+  border-bottom: 1px solid #eee;
 }
 
 .checkbox-list {
@@ -1008,7 +1141,18 @@
 
 .confirmation-dialog-content {
   padding: 20px;
-  color: #555;
+  font-size: 14px;
+  line-height: 1.5;
+  color: #333;
+}
+
+.confirmation-dialog-content ul {
+  margin: 10px 0;
+  padding-left: 20px;
+}
+
+.confirmation-dialog-content li {
+  margin-bottom: 5px;
 }
 
 .confirmation-dialog-footer {
