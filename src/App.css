@@ -820,11 +820,11 @@
 }
 
 .planning-option {
-  border-left: 4px solid #b5fff9;
+  border-left: 4px solid #3d7eb8;
 }
 
 .completed-option {
-  border-left: 4px solid #c3ffb5;
+  border-left: 4px solid #328a49;
 }
 
 .failed-option {
@@ -841,11 +841,11 @@
 
 /* Cell stage colors */
 .timeline-cell.stage-planning {
-  background-color: #b5fff9;
+  background-color: #3d7eb8;
 }
 
 .timeline-cell.stage-completed {
-  background-color: #c3ffb5;
+  background-color: #328a49;
 }
 
 .timeline-cell.stage-failed {
@@ -868,11 +868,11 @@
 
 /* Make sure weekend cells with stages still show their stage color */
 .timeline-cell.weekend.stage-planning {
-  background-color: #b5fff9;
+  background-color: #3d7eb8;
 }
 
 .timeline-cell.weekend.stage-completed {
-  background-color: #c3ffb5;
+  background-color: #328a49;
 }
 
 .timeline-cell.weekend.stage-failed {
@@ -1176,4 +1176,234 @@
 
 .delete-button:hover {
   background-color: #d32f2f;
+}
+
+/* Analysis Panel Styles */
+.analysis-panel {
+  margin-top: 30px;
+  padding: 20px;
+  background-color: #f9f9f9;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.analysis-title {
+  font-size: 18px;
+  margin-top: 0;
+  margin-bottom: 15px;
+  color: #333;
+}
+
+.chart-controls {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+.chart-type-button {
+  padding: 8px 12px;
+  background-color: #f0f0f0;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s ease;
+}
+
+.chart-type-button:hover {
+  background-color: #e0e0e0;
+}
+
+.chart-type-button.active {
+  background-color: #007bff;
+  color: white;
+  border-color: #0069d9;
+}
+
+.chart-area {
+  background-color: white;
+  border-radius: 6px;
+  padding: 15px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.chart {
+  width: 100%;
+}
+
+.chart-title {
+  font-size: 16px;
+  font-weight: 500;
+  margin-bottom: 15px;
+  text-align: center;
+  color: #444;
+}
+
+.no-data-message {
+  text-align: center;
+  padding: 30px;
+  color: #888;
+  font-style: italic;
+}
+
+/* Bar Chart Styles */
+.bar-chart .chart-container {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.chart-item {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.task-label {
+  font-size: 14px;
+  color: #555;
+}
+
+.bar-container {
+  height: 20px;
+  display: flex;
+  width: 100%;
+  background-color: #f0f0f0;
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.bar {
+  height: 100%;
+  transition: width 0.3s ease;
+}
+
+.stats-summary {
+  display: flex;
+  justify-content: flex-end;
+  font-size: 12px;
+  color: #666;
+}
+
+.completion-rate {
+  font-weight: 500;
+}
+
+/* Pie Chart Styles */
+.pie-chart {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.pie-container {
+  display: flex;
+  align-items: center;
+  gap: 30px;
+  margin-top: 10px;
+}
+
+.pie {
+  width: 150px;
+  height: 150px;
+  border-radius: 50%;
+  position: relative;
+}
+
+.pie-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+}
+
+.color-box {
+  width: 15px;
+  height: 15px;
+  border-radius: 3px;
+}
+
+/* Line Chart Styles */
+.line-chart-container {
+  height: 250px;
+  display: flex;
+  margin-top: 20px;
+  position: relative;
+}
+
+.chart-y-axis {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding-right: 10px;
+  border-right: 1px solid #ddd;
+  height: 100%;
+}
+
+.y-axis-label {
+  font-size: 12px;
+  color: #888;
+}
+
+.line-chart-content {
+  display: flex;
+  flex: 1;
+  height: 100%;
+  border-bottom: 1px solid #ddd;
+  align-items: flex-end;
+}
+
+.month-column {
+  flex: 1;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+}
+
+.data-points {
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+
+.data-point {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.planning-point {
+  background-color: #3d7eb8;
+}
+
+.completed-point {
+  background-color: #328a49;
+}
+
+.failed-point {
+  background-color: #7b5750;
+}
+
+.x-axis-label {
+  font-size: 12px;
+  color: #888;
+  margin-top: 5px;
+}
+
+.line-chart-legend {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  margin-top: 15px;
 }

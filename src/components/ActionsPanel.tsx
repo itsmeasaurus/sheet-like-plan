@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Task, CellData } from './TaskTimeline';
+import AnalysisPanel from './AnalysisPanel';
 
 interface ActionsPanelProps {
   tasks: Task[];
@@ -30,6 +31,13 @@ const ActionsPanel: React.FC<ActionsPanelProps> = ({ tasks, cellsData, months })
           onClose={() => setIsDownloadPopupOpen(false)}
         />
       )}
+      
+      {/* Add the Analysis Panel */}
+      <AnalysisPanel 
+        tasks={tasks}
+        cellsData={cellsData}
+        months={months}
+      />
     </div>
   );
 };
