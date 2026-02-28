@@ -29,7 +29,7 @@
     "typescript-eslint": "^8.24.1",
     "vite": "^6.2.0"
   },
-  "description": "This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.",
+  "description": "A spreadsheet-inspired task planner for mapping tasks across a full calendar year.",
   "main": "eslint.config.js",
   "keywords": [],
   "author": "",
