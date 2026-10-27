@@ -1,6 +1,4 @@
 import React, { useState, useRef, useEffect } from 'react';
-import TimelineHeader from './TimelineHeader';
-import TaskRow from './TaskRow';
 import AddTaskForm from './AddTaskForm';
 import ActionsPanel from './ActionsPanel';
 
@@ -22,7 +20,7 @@ type SelectedCell = {
 };
 
 // Type for cell data
-type CellData = {
+export type CellData = {
   taskId: string;
   month: string;
   day: number;
