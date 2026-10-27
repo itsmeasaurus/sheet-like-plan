@@ -5,7 +5,7 @@ function App() {
   return (
     <div className="app-container">
       <header className="app-header">
-        <h1>Task Timeline</h1>
+        <h1>Sheet-Like Plan</h1>
       </header>
       <main className="app-main">
         <TaskTimeline />

@@ -67,6 +67,15 @@
 
 /* Task Timeline Styles */
 .task-timeline {
+  /* Task rows and grid rows must share these so they line up */
+  --row-height: 40px;
+  --header-height: 60px;
+  --status-width: 110px;
+  --grid-line: #e0e0e0;
+  --weekend-bg: #f1f1f1;
+  /* One accent for selection and today */
+  --accent: #1a73e8;
+  --selection-tint: rgba(26, 115, 232, 0.14);
   width: 100%;
   font-family: 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
   padding: 20px;
@@ -163,52 +172,50 @@
   box-shadow: 0 0 5px rgba(74, 144, 226, 0.3);
 }
 
-/* Today button */
-.today-button {
-  padding: 6px 12px;
-  background-color: #f0f0f0;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 0.9rem;
-  display: flex;
+/* Toolbar buttons: Today and Quick Set are secondary, Set Stage is the primary action */
+.header-actions .today-button,
+.header-actions .quick-select-button,
+.header-actions .action-button {
+  height: 36px;
+  padding: 0 14px;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  transition: background-color 0.2s;
-  margin-right: 10px;
-}
-
-.today-button:hover {
-  background-color: #e0e0e0;
-}
-
-.today-button:active {
-  background-color: #d0d0d0;
-}
-
-/* Quick Select Button */
-.quick-select-button {
-  padding: 6px 12px;
-  background-color: #4a90e2;
-  color: white;
-  border: 1px solid #3a80d2;
-  border-radius: 4px;
+  gap: 6px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 1;
+  border: 1px solid #d0d7de;
+  border-radius: 6px;
+  background-color: #fff;
+  color: #333;
+  box-shadow: none;
   cursor: pointer;
-  font-size: 0.9rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: background-color 0.2s;
-  margin-right: 10px;
-  gap: 5px;
+  transition: background-color 0.15s, border-color 0.15s;
 }
 
-.quick-select-button:hover {
-  background-color: #3a80d2;
+.header-actions .today-button:hover,
+.header-actions .quick-select-button:hover {
+  background-color: #f3f4f6;
 }
 
-.quick-select-button:active {
-  background-color: #2a70c2;
+.header-actions .action-button {
+  background-color: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.header-actions .action-button:hover {
+  background-color: #1557b0;
+  border-color: #1557b0;
+}
+
+.header-actions .action-button.disabled,
+.header-actions .action-button.disabled:hover {
+  background-color: #e5e7eb;
+  border-color: #e5e7eb;
+  color: #9ca3af;
+  cursor: not-allowed;
 }
 
 /* Quick Select Popup */
@@ -327,8 +334,9 @@
 .fixed-columns {
   display: flex;
   flex-direction: column;
-  min-width: 300px;
-  border-right: 1px solid #e0e0e0;
+  width: 320px;
+  flex-shrink: 0;
+  border-right: 1px solid var(--grid-line);
   height: 100%;
   position: sticky;
   left: 0;
@@ -340,7 +348,7 @@
   display: flex;
   background-color: #f8f9fa;
   border-bottom: 2px solid #ccc;
-  height: 60px; /* Match the height of month headers with padding */
+  height: var(--header-height);
   position: sticky;
   top: 0;
   z-index: 2;
@@ -353,17 +361,16 @@
   justify-content: center;
   padding: 0 10px;
   font-weight: 600;
-  border-right: 1px solid #e0e0e0;
-  border-bottom: 2px solid #ccc;
   height: 100%;
 }
 
 .task-header {
   flex: 1;
+  min-width: 0;
   font-weight: 600;
   cursor: pointer;
   padding: 4px 8px;
-  border-radius: 4px;
+  border-right: 1px solid var(--grid-line);
   transition: background-color 0.2s ease;
   position: relative;
   display: flex;
@@ -375,9 +382,6 @@
 
 .task-header:hover {
   background-color: #f0f0f0;
-  border-radius: 4px;
-  padding: 4px 8px;
-  margin: 0;
 }
 
 .task-header:hover::after {
@@ -412,13 +416,14 @@
 }
 
 .status-header {
-  width: 100px;
+  width: var(--status-width);
+  flex-shrink: 0;
   text-align: center;
 }
 
 .task-list {
   overflow-y: auto;
-  height: calc(100% - 60px);
+  height: calc(100% - var(--header-height));
   scrollbar-width: thin;
 }
 
@@ -437,68 +442,67 @@
 
 .task-item {
   display: flex;
-  align-items: center;
-  padding: 10px 0;
-  border-bottom: 1px solid #e0e0e0;
+  height: var(--row-height);
+  border-bottom: 1px solid var(--grid-line);
   position: relative;
-  min-height: 40px;
 }
 
-/* Delete task button */
+/* Delete task button, shown on row hover */
 .delete-task-button {
   position: absolute;
-  top: 5px;
+  top: 50%;
   left: 5px;
-  width: 18px;
-  height: 18px;
+  transform: translateY(-50%);
+  width: 20px;
+  height: 20px;
+  padding: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: #f44336;
-  color: white;
-  border-radius: 50%;
-  font-size: 14px;
+  border: none;
+  border-radius: 4px;
+  background-color: transparent;
+  color: #9aa0a6;
   cursor: pointer;
   opacity: 0;
-  transition: opacity 0.2s;
-  z-index: 10;
   visibility: hidden;
+  transition: opacity 0.15s, background-color 0.15s, color 0.15s;
 }
 
-.task-item:hover .delete-task-button {
-  opacity: 0.7;
+.task-item:hover .delete-task-button,
+.delete-task-button:focus-visible {
+  opacity: 1;
   visibility: visible;
 }
 
 .delete-task-button:hover {
-  opacity: 1;
+  background-color: #fdecea;
+  color: #d93025;
 }
 
 .task-name {
   flex: 1;
-  padding: 0 10px;
-  padding-left: 25px; /* Make room for the delete button */
+  min-width: 0;
+  padding: 0 10px 0 30px; /* Room on the left for the delete button */
   font-size: 0.9rem;
+  line-height: calc(var(--row-height) - 1px);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 200px;
-  display: flex;
-  align-items: center;
-  border-right: 1px solid #e0e0e0;
+  border-right: 1px solid var(--grid-line);
   font-weight: 500;
   color: #333;
 }
 
 .task-status {
-  width: 120px; /* Increased width to accommodate longer status text */
+  width: var(--status-width);
+  flex-shrink: 0;
   padding: 0 10px;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 0.85rem;
   font-weight: 500;
-  border-right: 1px solid #e0e0e0;
   white-space: nowrap; /* Prevent line breaks */
   cursor: pointer; /* Make it look clickable */
   transition: background-color 0.2s;
@@ -525,7 +529,6 @@
   flex-grow: 1;
   overflow-x: auto;
   position: relative;
-  border-left: 1px solid #e0e0e0;
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -550,7 +553,7 @@
   background-color: #f8f9fa;
   border-bottom: 2px solid #ccc;
   min-width: fit-content;
-  height: 60px;
+  height: var(--header-height);
   position: sticky;
   top: 0;
   z-index: 2;
@@ -571,7 +574,7 @@
 
 .month-day-header {
   width: 24px;
-  height: 40px;
+  height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -605,8 +608,8 @@
 
 .timeline-row {
   display: flex;
-  height: 40px; /* Match task item height */
-  border-bottom: 1px solid #e0e0e0;
+  height: var(--row-height);
+  border-bottom: 1px solid var(--grid-line);
 }
 
 .month-cells {
@@ -617,12 +620,32 @@
 .timeline-cell {
   width: 24px;
   height: 100%;
-  border-right: 1px solid #e0e0e0;
-  box-sizing: border-box;
+  border-right: 1px solid var(--grid-line);
   cursor: pointer;
   position: relative;
   background-color: #fff;
-  transition: background-color 0.15s ease;
+}
+
+.timeline-cell.weekend {
+  background-color: var(--weekend-bg);
+}
+
+/* Cell stage colors */
+.timeline-cell.stage-planning {
+  background-color: #3d7eb8;
+}
+
+.timeline-cell.stage-completed {
+  background-color: #328a49;
+}
+
+.timeline-cell.stage-failed {
+  background-color: #7b5750;
+}
+
+/* Today's column: thin accent lines on both sides, visible over any stage color */
+.timeline-cell.today {
+  box-shadow: inset 1px 0 0 var(--accent), inset -1px 0 0 var(--accent);
 }
 
 .cell-content {
@@ -630,25 +653,25 @@
   height: 100%;
 }
 
-.timeline-cell.selected {
-  border: 1px solid rgba(128, 128, 128, 0.4);
-  box-shadow: inset 0 0 2px rgba(0, 0, 0, 0.1);
+.timeline-cell:hover .cell-content {
+  background-color: rgba(0, 0, 0, 0.06);
 }
 
+/* Selection looks the same on every cell: an accent ring with a white inner edge, so it shows on blue cells too */
 .timeline-cell.selected .cell-content {
-  background-color: rgba(240, 240, 240, 0.5);
+  box-shadow: inset 0 0 0 2px var(--accent), inset 0 0 0 3px #fff;
 }
 
-.timeline-cell:hover {
-  background-color: rgba(0, 0, 0, 0.02);
-  border: 1px solid rgba(128, 128, 128, 0.3);
+/* Empty selected cells also get a light accent tint, distinct from the weekend gray */
+.timeline-cell.selected:not(.stage-planning):not(.stage-completed):not(.stage-failed) .cell-content {
+  background-color: var(--selection-tint);
 }
 
 .timeline-grid {
   flex-grow: 1;
   overflow-y: auto;
   min-width: fit-content;
-  height: calc(100% - 60px);
+  height: calc(100% - var(--header-height));
   padding-bottom: 0; /* Remove bottom padding to eliminate empty space */
   scrollbar-width: thin;
 }
@@ -664,11 +687,6 @@
 .timeline-grid::-webkit-scrollbar-thumb {
   background: #ccc;
   border-radius: 4px;
-}
-
-/* Add styles for selection feedback */
-.timeline-cell:hover {
-  background-color: rgba(0, 0, 0, 0.03);
 }
 
 /* Add Task Form Styles */
@@ -865,57 +883,24 @@
   padding-top: 10px;
 }
 
-/* Cell stage colors */
-.timeline-cell.stage-planning {
-  background-color: #3d7eb8;
-}
-
-.timeline-cell.stage-completed {
-  background-color: #328a49;
-}
-
-.timeline-cell.stage-failed {
-  background-color: #7b5750;
-}
-
-/* Selected cells with stages */
-.timeline-cell.selected.stage-planning,
-.timeline-cell.selected.stage-completed,
-.timeline-cell.selected.stage-failed {
-  border: 1px solid rgba(80, 80, 80, 0.3);
-}
-
-/* Weekend styling */
-.timeline-cell.weekend,
+/* Weekend day headers */
 .month-day-header.weekend,
 .day-number.weekend {
-  background-color: #f1f1f1;
+  background-color: var(--weekend-bg);
 }
 
-/* Make sure weekend cells with stages still show their stage color */
-.timeline-cell.weekend.stage-planning {
-  background-color: #3d7eb8;
-}
-
-.timeline-cell.weekend.stage-completed {
-  background-color: #328a49;
-}
-
-.timeline-cell.weekend.stage-failed {
-  background-color: #7b5750;
-}
-
-/* Selected weekend cells */
-.timeline-cell.weekend.selected {
-  background-color: #f1f1f1;
-  border: 2px solid #2196f3;
-}
-
-/* Selected weekend cells with stages */
-.timeline-cell.weekend.selected.stage-planning,
-.timeline-cell.weekend.selected.stage-completed,
-.timeline-cell.weekend.selected.stage-failed {
-  border: 2px solid #2196f3;
+/* Today's day number gets a filled accent badge that stays put while you select other cells */
+.month-day-header.today .day-label {
+  min-width: 20px;
+  height: 20px;
+  padding: 0 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  background-color: var(--accent);
+  color: #fff;
+  font-weight: 600;
 }
 
 /* Status popup styling */

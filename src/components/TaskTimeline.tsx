@@ -382,6 +382,11 @@ const TaskTimeline = () => {
   // Helper function to determine if a day is a weekend (Saturday or Sunday)
   const isWeekend = (month: string, day: number): boolean => isWeekendDate(toDate(month, day));
 
+  // Today's date in local time, or null when the plan is for another year
+  const now = new Date();
+  const todayDate = now.getFullYear() === year ? toIsoDate(year, now.getMonth(), now.getDate()) : null;
+  const isToday = (month: string, day: number): boolean => toDate(month, day) === todayDate;
+
   // Get cell stage if it exists
   const getCellStage = (taskId: string, month: string, day: number): CellStage =>
     stageByKey.get(cellKey(taskId, toDate(month, day))) ?? null;
@@ -463,14 +468,10 @@ const TaskTimeline = () => {
   // Navigate to today's date
   const navigateToToday = () => {
     const today = new Date();
-    const currentMonth = today.toLocaleString('default', { month: 'long' });
+    const currentMonth = MONTH_NAMES[today.getMonth()];
     const currentDay = today.getDate();
     
-    // Set the selected month and day to today
-    setSelectedMonth(currentMonth);
-    setSelectedDay(currentDay);
-    
-    // Find the element for today's date and scroll to it
+    // Today's column is always marked, so only scroll to it (the selected day stays as it is)
     setTimeout(() => {
       const todayElement = document.querySelector(`.month-day-header[data-month="${currentMonth}"][data-day="${currentDay}"]`);
       if (todayElement) {
@@ -624,8 +625,18 @@ const TaskTimeline = () => {
           <div className="task-list" ref={taskListRef}>
             {tasks.map(task => (
               <div key={task.id} className="task-item">
-                <div className="delete-task-button" onClick={() => handleDeleteTask(task.id)}>×</div>
-                <div className="task-name">{task.name}</div>
+                <button
+                  type="button"
+                  className="delete-task-button"
+                  onClick={() => handleDeleteTask(task.id)}
+                  aria-label={`Delete ${task.name}`}
+                  title="Delete task"
+                >
+                  <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true">
+                    <path d="M1.5 1.5l7 7M8.5 1.5l-7 7" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+                  </svg>
+                </button>
+                <div className="task-name" title={task.name}>{task.name}</div>
                 <div 
                   className={`task-status status-${task.status.toLowerCase().replace(' ', '-')}`}
                   onClick={(e) => handleStatusCellClick(task.id, e)}
@@ -651,11 +662,11 @@ const TaskTimeline = () => {
                       key={`${month.name}-${day}`} 
                       className={`month-day-header ${day === 1 ? 'first-of-month' : ''} ${
                         month.name === selectedMonth && day === selectedDay ? 'selected-header' : ''
-                      } ${isWeekendDay ? 'weekend' : ''}`}
+                      } ${isWeekendDay ? 'weekend' : ''} ${isToday(month.name, day) ? 'today' : ''}`}
                       data-month={month.name}
                       data-day={day}
                     >
-                      {day}
+                      <span className="day-label">{day}</span>
                     </div>
                   );
                 })}
@@ -697,7 +708,7 @@ const TaskTimeline = () => {
                       return (
                         <div 
                           key={day} 
-                          className={`timeline-cell ${isSelected ? 'selected' : ''} ${stageClass} ${isWeekendDay ? 'weekend' : ''}`}
+                          className={`timeline-cell ${isSelected ? 'selected' : ''} ${stageClass} ${isWeekendDay ? 'weekend' : ''} ${isToday(month.name, day) ? 'today' : ''}`}
                           onMouseDown={() => handleCellMouseDown(task.id, month.name, day)}
                           onMouseEnter={() => handleCellMouseEnter(task.id, month.name, day)}
                         >
