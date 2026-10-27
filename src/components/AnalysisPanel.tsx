@@ -1,8 +1,32 @@
-import React, { useState, useEffect } from 'react';
-import { Task, CellStage, CellData } from './TaskTimeline';
+import React, { useState, useMemo } from 'react';
+import { Task, CellData } from './TaskTimeline';
 
 // Define chart types
 type ChartType = 'bar' | 'pie' | 'line';
+
+type TaskStat = {
+  taskId: string;
+  taskName: string;
+  planningCells: number;
+  completedCells: number;
+  failedCells: number;
+  totalCells: number;
+  completionRate: number;
+  failureRate: number;
+};
+
+type MonthStat = {
+  month: string;
+  planningCells: number;
+  completedCells: number;
+  failedCells: number;
+  totalCells: number;
+};
+
+type AnalysisData = {
+  taskStats: TaskStat[];
+  monthlyStats: MonthStat[];
+};
 
 interface AnalysisPanelProps {
   tasks: Task[];
@@ -12,18 +36,12 @@ interface AnalysisPanelProps {
 
 const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ tasks, cellsData, months }) => {
   const [chartType, setChartType] = useState<ChartType>('bar');
-  const [analysisData, setAnalysisData] = useState<any>(null);
 
   // Calculate analysis data whenever tasks or cellsData changes
-  useEffect(() => {
-    generateAnalysisData();
-  }, [tasks, cellsData, chartType]);
-
-  const generateAnalysisData = () => {
+  const analysisData = useMemo((): AnalysisData | null => {
     // Skip if no tasks
     if (tasks.length === 0) {
-      setAnalysisData(null);
-      return;
+      return null;
     }
 
     // Calculate statistics based on the data
@@ -62,8 +80,8 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ tasks, cellsData, months 
       };
     });
 
-    setAnalysisData({ taskStats, monthlyStats });
-  };
+    return { taskStats, monthlyStats };
+  }, [tasks, cellsData, months]);
 
   // Render the appropriate chart based on chartType
   const renderChart = () => {
@@ -73,26 +91,25 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ tasks, cellsData, months 
 
     switch (chartType) {
       case 'bar':
-        return renderBarChart();
+        return renderBarChart(analysisData);
       case 'pie':
-        return renderPieChart();
+        return renderPieChart(analysisData);
       case 'line':
-        return renderLineChart();
+        return renderLineChart(analysisData);
       default:
-        return renderBarChart();
+        return renderBarChart(analysisData);
     }
   };
 
   // Render a bar chart showing task completion rates
-  const renderBarChart = () => {
-    const { taskStats } = analysisData;
-    const maxValue = Math.max(...taskStats.map((stat: any) => stat.totalCells || 0), 1);
+  const renderBarChart = ({ taskStats }: AnalysisData) => {
+    const maxValue = Math.max(...taskStats.map(stat => stat.totalCells || 0), 1);
 
     return (
       <div className="chart bar-chart">
         <div className="chart-title">Task Progress</div>
         <div className="chart-container">
-          {taskStats.map((stat: any) => (
+          {taskStats.map(stat => (
             <div key={stat.taskId} className="chart-item">
               <div className="task-label">{stat.taskName}</div>
               <div className="bar-container">
@@ -132,11 +149,11 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ tasks, cellsData, months 
   };
 
   // Render a pie chart showing overall distribution
-  const renderPieChart = () => {
+  const renderPieChart = ({ taskStats }: AnalysisData) => {
     // Calculate totals across all tasks
-    const totalPlanning = analysisData.taskStats.reduce((sum: number, stat: any) => sum + stat.planningCells, 0);
-    const totalCompleted = analysisData.taskStats.reduce((sum: number, stat: any) => sum + stat.completedCells, 0);
-    const totalFailed = analysisData.taskStats.reduce((sum: number, stat: any) => sum + stat.failedCells, 0);
+    const totalPlanning = taskStats.reduce((sum, stat) => sum + stat.planningCells, 0);
+    const totalCompleted = taskStats.reduce((sum, stat) => sum + stat.completedCells, 0);
+    const totalFailed = taskStats.reduce((sum, stat) => sum + stat.failedCells, 0);
     const total = totalPlanning + totalCompleted + totalFailed;
 
     // Calculate percentages and angles for the pie chart
@@ -146,7 +163,6 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ tasks, cellsData, months 
 
     const planningAngle = (planningPercentage / 100) * 360;
     const completedAngle = (completedPercentage / 100) * 360;
-    const failedAngle = (failedPercentage / 100) * 360;
 
     return (
       <div className="chart pie-chart">
@@ -179,9 +195,8 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ tasks, cellsData, months 
   };
 
   // Render a line chart showing monthly progress
-  const renderLineChart = () => {
-    const { monthlyStats } = analysisData;
-    const maxValue = Math.max(...monthlyStats.map((stat: any) => stat.totalCells || 0), 1);
+  const renderLineChart = ({ monthlyStats }: AnalysisData) => {
+    const maxValue = Math.max(...monthlyStats.map(stat => stat.totalCells || 0), 1);
 
     return (
       <div className="chart line-chart">
@@ -195,7 +210,7 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ tasks, cellsData, months 
             ))}
           </div>
           <div className="line-chart-content">
-            {monthlyStats.map((stat: any, index: number) => (
+            {monthlyStats.map(stat => (
               <div key={stat.month} className="month-column">
                 <div className="data-points">
                   <div 
