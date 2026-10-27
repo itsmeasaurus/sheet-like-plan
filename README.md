@@ -78,7 +78,9 @@ cd sheet-like-plan
 docker compose up -d --build
 ```
 
-Open [http://localhost:3000](http://localhost:3000). Your data lives in the `sheet-like-plan-data` Docker volume, so it survives restarts and upgrades. The app is only reachable from your own computer.
+Open [http://localhost:3000](http://localhost:3000). The app is only reachable from your own computer.
+
+Your data lives in a Docker volume, so it survives restarts and upgrades. Compose puts the folder name in front of the volume's name, so if you cloned into `sheet-like-plan` it shows up in `docker volume ls` as `sheet-like-plan_sheet-like-plan-data`. Running `docker compose down` keeps the volume; only `docker compose down -v` deletes your data.
 
 To upgrade after pulling new code, run `docker compose up -d --build` again.
 
@@ -91,21 +93,22 @@ Open the app in the same browser you used before. If your plan is empty and that
 Sheet-Like Plan includes an [MCP](https://modelcontextprotocol.io) server, so Claude Desktop can read and edit your plan.
 
 1. Make sure the container is running (`docker compose up -d`).
-2. In Claude Desktop, open **Settings → Developer → Edit Config**. This opens `claude_desktop_config.json`.
-3. Add the server and save:
+2. Find the full path to `docker` by running `which docker` in a terminal (for example `/usr/local/bin/docker`). Claude Desktop often can't find `docker` by name when it's opened from the Dock, so use the full path.
+3. In Claude Desktop, open **Settings → Developer → Edit Config**. This opens `claude_desktop_config.json`.
+4. Add the server, using your path from step 2, and save. If the file already has an `mcpServers` section, add the `"sheet-like-plan"` entry inside it instead of replacing the file.
 
    ```json
    {
      "mcpServers": {
        "sheet-like-plan": {
-         "command": "docker",
+         "command": "/usr/local/bin/docker",
          "args": ["exec", "-i", "sheet-like-plan", "node", "dist-server/server/mcp.js"]
        }
      }
    }
    ```
 
-4. Quit and reopen Claude Desktop.
+5. Quit Claude Desktop completely and reopen it. The first time Claude uses a tool, it asks for your permission.
 
 Then try: *"Add a task called Gym and mark every weekday in November as planning."* If the app is open in your browser, the grid updates within a second.
 
@@ -121,8 +124,9 @@ Then try: *"Add a task called Gym and mark every weekday in November as planning
 
 **Troubleshooting**
 
-- The server shows as failed, with an error like *"spawn docker ENOENT"* in the logs: Claude Desktop may not find `docker` on its `PATH`. Replace `"docker"` with the full path from `which docker` (for example `/usr/local/bin/docker`).
+- The server shows as failed, with an error like *"spawn docker ENOENT"* in the logs: Claude Desktop can't find `docker`. Check that `"command"` is the full path printed by `which docker`.
 - *"No such container"*: the container isn't running. Start it with `docker compose up -d`, then restart Claude Desktop.
+- `docker compose up` fails with *"port is already allocated"*: something else is using port 3000 (often an older container). Find it with `docker ps`, stop it, and run `docker compose up -d` again. Or change the left side of `"127.0.0.1:3000:3000"` in `docker-compose.yml` to another port, such as `"127.0.0.1:3001:3000"`, and open that port instead.
 - Dates: a plan covers one calendar year, and Claude can only mark days inside that year.
 
 ## Local Development
