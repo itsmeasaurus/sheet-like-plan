@@ -1,15 +1,16 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import AddTaskForm from './AddTaskForm';
 import ActionsPanel from './ActionsPanel';
-
-export type Task = {
-  id: string;
-  name: string;
-  status: 'In progress' | 'Not started' | 'Completed' | 'Failed';
-};
+import ImportBanner from './ImportBanner';
+import { usePlan } from '../api/usePlan';
+import { MONTH_NAMES, daysInMonth, expandRange, isWeekend as isWeekendDate, parseIsoDate, toIsoDate } from '../../shared/dates.js';
+import { computeStats } from '../../shared/stats.js';
+import type { CellRef, IsoDate, Stage, TaskStatus } from '../../shared/types.js';
 
 // Type for cell stage
-export type CellStage = 'planning' | 'completed' | 'failed' | null;
+export type CellStage = Stage | null;
+
+const cellKey = (taskId: string, date: IsoDate) => `${taskId}|${date}`;
 
 // Type for selected cell
 type SelectedCell = {
@@ -28,11 +29,9 @@ export type CellData = {
 };
 
 const TaskTimeline = () => {
-  const [tasks, setTasks] = useState<Task[]>(() => {
-    // Try to get tasks from localStorage
-    const savedTasks = localStorage.getItem('tasks');
-    return savedTasks ? JSON.parse(savedTasks) : [];
-  });
+  const { snapshot, error, ...plan } = usePlan();
+  const tasks = snapshot?.tasks ?? [];
+  const year = snapshot?.plan.year ?? new Date().getFullYear();
 
   const [newTaskName, setNewTaskName] = useState('');
   const taskListRef = useRef<HTMLDivElement>(null);
@@ -47,29 +46,25 @@ const TaskTimeline = () => {
   // Add state for selected month and day
   const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
-  // Add state for cell data and dropdown
-  const [cellsData, setCellsData] = useState<CellData[]>(() => {
-    // Try to get cell data from localStorage
-    const savedCellsData = localStorage.getItem('cellsData');
-    return savedCellsData ? JSON.parse(savedCellsData) : [];
-  });
+  // The server stores dates; the grid and the export still think in month names and day numbers
+  const cellsData = useMemo<CellData[]>(() => (snapshot?.cells ?? []).map(({ taskId, date, stage }) => {
+    const { monthIndex, day } = parseIsoDate(date);
+    return { taskId, month: MONTH_NAMES[monthIndex], day, stage };
+  }), [snapshot]);
+  const stageByKey = useMemo(
+    () => new Map((snapshot?.cells ?? []).map(cell => [cellKey(cell.taskId, cell.date), cell.stage])),
+    [snapshot],
+  );
+  const stats = useMemo(() => (snapshot ? computeStats(snapshot) : null), [snapshot]);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   // Add state for status popup
   const [statusPopup, setStatusPopup] = useState<{ taskId: string, x: number, y: number } | null>(null);
   // Add state for task deletion
   const [taskToDelete, setTaskToDelete] = useState<string | null>(null);
-  // Add state for editable title and header
-  const [title, setTitle] = useState<string>(() => {
-    // Try to get title from localStorage
-    const savedTitle = localStorage.getItem('title');
-    return savedTitle || "Task Timeline";
-  });
+  // Drafts while the title and header are being edited; saved on Enter or blur
+  const [title, setTitle] = useState<string>('');
   const [isEditingTitle, setIsEditingTitle] = useState<boolean>(false);
-  const [headerText, setHeaderText] = useState<string>(() => {
-    // Try to get header text from localStorage
-    const savedHeaderText = localStorage.getItem('headerText');
-    return savedHeaderText || "Skills To Learn";
-  });
+  const [headerText, setHeaderText] = useState<string>('');
   const [isEditingHeader, setIsEditingHeader] = useState<boolean>(false);
 
   // Add state for quick select popup
@@ -78,7 +73,7 @@ const TaskTimeline = () => {
     taskId: string | null;
     months: string[];
     dayType: 'all' | 'weekdays' | 'weekends';
-    stage: CellStage;
+    stage: Stage;
   }>({
     taskId: null,
     months: [],
@@ -86,32 +81,13 @@ const TaskTimeline = () => {
     stage: 'planning'
   });
   const [showQuickSelectConfirmation, setShowQuickSelectConfirmation] = useState<boolean>(false);
-  const [affectedCells, setAffectedCells] = useState<CellData[]>([]);
+  const [affectedCells, setAffectedCells] = useState<CellRef[]>([]);
 
   // Add ref for the timeline wrapper
   const timelineWrapperRef = useRef<HTMLDivElement>(null);
-  
-  // Save tasks to localStorage whenever they change
-  useEffect(() => {
-    localStorage.setItem('tasks', JSON.stringify(tasks));
-  }, [tasks]);
 
-  // Save cell data to localStorage whenever it changes
-  useEffect(() => {
-    localStorage.setItem('cellsData', JSON.stringify(cellsData));
-  }, [cellsData]);
-
-  // Save title to localStorage whenever it changes
-  useEffect(() => {
-    localStorage.setItem('title', title);
-  }, [title]);
-
-  // Save header text to localStorage whenever it changes
-  useEffect(() => {
-    localStorage.setItem('headerText', headerText);
-  }, [headerText]);
-
-  // Synchronize scrolling between task list and timeline grid
+  // Synchronize scrolling between task list and timeline grid (they only exist once the plan has loaded)
+  const isLoaded = snapshot !== null;
   useEffect(() => {
     const taskList = taskListRef.current;
     const timelineGrid = timelineGridRef.current;
@@ -137,7 +113,7 @@ const TaskTimeline = () => {
       taskList.removeEventListener('scroll', handleTaskListScroll);
       timelineGrid.removeEventListener('scroll', handleTimelineGridScroll);
     };
-  }, []);
+  }, [isLoaded]);
 
   // Handle click outside to clear selection
   useEffect(() => {
@@ -319,14 +295,8 @@ const TaskTimeline = () => {
 
   const addTask = () => {
     if (newTaskName.trim() === '') return;
-    
-    const newTask: Task = {
-      id: Date.now().toString(),
-      name: newTaskName,
-      status: 'Not started',
-    };
-    
-    setTasks([...tasks, newTask]);
+
+    void plan.addTask(newTaskName.trim());
     setNewTaskName('');
   };
 
@@ -339,15 +309,12 @@ const TaskTimeline = () => {
   // Confirm task deletion
   const confirmDeleteTask = () => {
     if (taskToDelete) {
-      // Remove the task
-      setTasks(prevTasks => prevTasks.filter(task => task.id !== taskToDelete));
-      
+      // Remove the task (the server deletes its cells too)
+      void plan.deleteTask(taskToDelete);
+
       // Clear any selected cells for this task
       setSelectedCells(prevSelected => prevSelected.filter(cell => cell.taskId !== taskToDelete));
-      
-      // Clear any cell data for this task
-      setCellsData(prevCellData => prevCellData.filter(cell => cell.taskId !== taskToDelete));
-      
+
       // Reset the task to delete
       setTaskToDelete(null);
     }
@@ -360,6 +327,7 @@ const TaskTimeline = () => {
 
   // Handle title click to make it editable
   const handleTitleClick = () => {
+    setTitle(snapshot?.plan.title ?? '');
     setIsEditingTitle(true);
   };
 
@@ -371,17 +339,19 @@ const TaskTimeline = () => {
   // Handle title blur to save changes
   const handleTitleBlur = () => {
     setIsEditingTitle(false);
+    if (title.trim() && title.trim() !== snapshot?.plan.title) void plan.updatePlan({ title: title.trim() });
   };
 
   // Handle title key down to save on Enter
   const handleTitleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
-      setIsEditingTitle(false);
+      e.currentTarget.blur();
     }
   };
 
   // Handle header click to make it editable
   const handleHeaderClick = () => {
+    setHeaderText(snapshot?.plan.header ?? '');
     setIsEditingHeader(true);
   };
 
@@ -393,92 +363,32 @@ const TaskTimeline = () => {
   // Handle header blur to save changes
   const handleHeaderBlur = () => {
     setIsEditingHeader(false);
+    if (headerText.trim() && headerText.trim() !== snapshot?.plan.header) void plan.updatePlan({ header: headerText.trim() });
   };
 
   // Handle header key down to save on Enter
   const handleHeaderKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
-      setIsEditingHeader(false);
+      e.currentTarget.blur();
     }
   };
 
-  // Define months for the timeline
-  const months = [
-    { name: 'January', days: 31 },
-    { name: 'February', days: 28 },
-    { name: 'March', days: 31 },
-    { name: 'April', days: 30 },
-    { name: 'May', days: 31 },
-    { name: 'June', days: 30 },
-    { name: 'July', days: 31 },
-    { name: 'August', days: 31 },
-    { name: 'September', days: 30 },
-    { name: 'October', days: 31 },
-    { name: 'November', days: 30 },
-    { name: 'December', days: 31 }
-  ];
+  // Define months for the timeline (February follows the plan's year)
+  const months = MONTH_NAMES.map((name, monthIndex) => ({ name, days: daysInMonth(year, monthIndex) }));
+
+  const toDate = (month: string, day: number): IsoDate =>
+    toIsoDate(year, months.findIndex(m => m.name === month), day);
 
   // Helper function to determine if a day is a weekend (Saturday or Sunday)
-  const isWeekend = (month: string, day: number): boolean => {
-    // Get the current year
-    const year = new Date().getFullYear();
-    
-    // Map month name to month number (0-indexed)
-    const monthMap: { [key: string]: number } = {
-      'January': 0, 'February': 1, 'March': 2, 'April': 3,
-      'May': 4, 'June': 5, 'July': 6, 'August': 7,
-      'September': 8, 'October': 9, 'November': 10, 'December': 11
-    };
-    
-    // Create a date object for the given month and day
-    const date = new Date(year, monthMap[month], day);
-    
-    // Get the day of the week (0 = Sunday, 6 = Saturday)
-    const dayOfWeek = date.getDay();
-    
-    // Return true if it's Saturday (6) or Sunday (0)
-    return dayOfWeek === 0 || dayOfWeek === 6;
-  };
+  const isWeekend = (month: string, day: number): boolean => isWeekendDate(toDate(month, day));
 
   // Get cell stage if it exists
-  const getCellStage = (taskId: string, month: string, day: number): CellStage => {
-    const cellData = cellsData.find(
-      cell => cell.taskId === taskId && cell.month === month && cell.day === day
-    );
-    return cellData?.stage || null;
-  };
+  const getCellStage = (taskId: string, month: string, day: number): CellStage =>
+    stageByKey.get(cellKey(taskId, toDate(month, day))) ?? null;
 
   // Handle stage change for selected cells
   const handleStageChange = (stage: CellStage) => {
-    // Update cell data for all selected cells
-    const updatedCellsData = [...cellsData];
-    
-    selectedCells.forEach(selectedCell => {
-      const { taskId, month, day } = selectedCell;
-      
-      // Check if cell data already exists
-      const existingCellIndex = updatedCellsData.findIndex(
-        cell => cell.taskId === taskId && cell.month === month && cell.day === day
-      );
-      
-      if (stage === null) {
-        // If clearing the stage, remove the cell data if it exists
-        if (existingCellIndex >= 0) {
-          updatedCellsData.splice(existingCellIndex, 1);
-        }
-      } else {
-        // Otherwise update or add the stage
-        if (existingCellIndex >= 0) {
-          // Update existing cell data
-          updatedCellsData[existingCellIndex].stage = stage;
-        } else {
-          // Add new cell data
-          updatedCellsData.push({ taskId, month, day, stage });
-        }
-      }
-    });
-    
-    setCellsData(updatedCellsData);
+    void plan.setCells(selectedCells.map(({ taskId, month, day }) => ({ taskId, date: toDate(month, day) })), stage);
     setIsDropdownOpen(false);
     // We don't clear the selection, so cells remain selected after setting the stage
   };
@@ -500,68 +410,32 @@ const TaskTimeline = () => {
   };
 
   // Handle status update
-  const handleStatusUpdate = (taskId: string, newStatus: 'In progress' | 'Not started' | 'Completed' | 'Failed') => {
+  const handleStatusUpdate = (taskId: string, newStatus: TaskStatus) => {
     // Update the task status
-    setTasks(prevTasks => 
-      prevTasks.map(task => 
-        task.id === taskId ? { ...task, status: newStatus } : task
-      )
-    );
-    
+    void plan.updateTask(taskId, { status: newStatus });
+
     // Close the status popup
     setStatusPopup(null);
   };
 
   // Handle quick select apply
   const handleQuickSelectApply = () => {
-    if (!quickSelectData.taskId || quickSelectData.months.length === 0) {
+    const { taskId, dayType, stage } = quickSelectData;
+    if (!taskId || quickSelectData.months.length === 0) {
       return; // Ensure a task and at least one month is selected
     }
 
-    // Calculate which days to apply based on the dayType
-    const newCellsData: CellData[] = [];
-    const existingCellsToUpdate: CellData[] = [];
-    
-    quickSelectData.months.forEach(month => {
-      const daysInMonth = months.find(m => m.name === month)?.days || 30;
-      
-      for (let day = 1; day <= daysInMonth; day++) {
-        // Check if we should include this day based on dayType
-        const shouldInclude = 
-          quickSelectData.dayType === 'all' || 
-          (quickSelectData.dayType === 'weekdays' && !isWeekend(month, day)) ||
-          (quickSelectData.dayType === 'weekends' && isWeekend(month, day));
-        
-        if (shouldInclude && quickSelectData.taskId) {
-          // Check if cell data already exists
-          const existingCellIndex = cellsData.findIndex(
-            cell => cell.taskId === quickSelectData.taskId && cell.month === month && cell.day === day
-          );
-          
-          if (existingCellIndex >= 0) {
-            // If it exists and has a different stage, add to cells to update
-            if (cellsData[existingCellIndex].stage !== quickSelectData.stage) {
-              existingCellsToUpdate.push({
-                ...cellsData[existingCellIndex],
-                stage: quickSelectData.stage
-              });
-            }
-          } else {
-            // Add new cell data
-            newCellsData.push({
-              taskId: quickSelectData.taskId,
-              month,
-              day,
-              stage: quickSelectData.stage
-            });
-          }
-        }
-      }
-    });
-    
+    // Every matching day in the chosen months whose stage would actually change
+    const affected = months
+      .flatMap((month, monthIndex) => quickSelectData.months.includes(month.name)
+        ? expandRange(toIsoDate(year, monthIndex, 1), toIsoDate(year, monthIndex, month.days), dayType)
+        : [])
+      .filter(date => stageByKey.get(cellKey(taskId, date)) !== stage)
+      .map(date => ({ taskId, date }));
+
     // Always show confirmation dialog if there are cells to update or create
-    if (existingCellsToUpdate.length > 0 || newCellsData.length > 0) {
-      setAffectedCells([...existingCellsToUpdate, ...newCellsData]);
+    if (affected.length > 0) {
+      setAffectedCells(affected);
       setShowQuickSelectConfirmation(true);
     } else {
       // No cells to update or create
@@ -570,31 +444,9 @@ const TaskTimeline = () => {
   };
 
   // Apply quick select changes
-  const applyQuickSelect = (newCells: CellData[]) => {
-    // Update cell data
-    setCellsData(prevCellsData => {
-      const updatedCellsData = [...prevCellsData];
-      
-      newCells.forEach(newCell => {
-        const { taskId, month, day, stage } = newCell;
-        
-        // Check if cell data already exists
-        const existingCellIndex = updatedCellsData.findIndex(
-          cell => cell.taskId === taskId && cell.month === month && cell.day === day
-        );
-        
-        if (existingCellIndex >= 0) {
-          // Update existing cell data
-          updatedCellsData[existingCellIndex].stage = stage;
-        } else {
-          // Add new cell data
-          updatedCellsData.push(newCell);
-        }
-      });
-      
-      return updatedCellsData;
-    });
-    
+  const applyQuickSelect = (newCells: CellRef[]) => {
+    void plan.setCells(newCells, quickSelectData.stage);
+
     // Close popups
     setShowQuickSelectPopup(false);
     setShowQuickSelectConfirmation(false);
@@ -641,8 +493,18 @@ const TaskTimeline = () => {
     };
   }, [statusPopup]);
 
+  if (!snapshot || !stats) {
+    return (
+      <div className="task-timeline">
+        {error ? <div className="error-banner">Can't reach the Sheet-Like Plan server: {error}</div> : 'Loading…'}
+      </div>
+    );
+  }
+
   return (
     <div className="task-timeline">
+      {error && <div className="error-banner">{error}</div>}
+      {tasks.length === 0 && <ImportBanner onImport={plan.importLegacy} />}
       <div className="timeline-header-container">
         {isEditingTitle ? (
           <input
@@ -656,7 +518,7 @@ const TaskTimeline = () => {
           />
         ) : (
           <h2 className="timeline-title" onClick={handleTitleClick}>
-            {title}
+            {snapshot.plan.title}
           </h2>
         )}
         
@@ -754,7 +616,7 @@ const TaskTimeline = () => {
               />
             ) : (
               <div className="task-header" onClick={handleHeaderClick}>
-                {headerText}
+                {snapshot.plan.header}
               </div>
             )}
             <div className="status-header">Status</div>
@@ -861,6 +723,7 @@ const TaskTimeline = () => {
         tasks={tasks}
         cellsData={cellsData}
         months={months}
+        stats={stats}
       />
 
       {/* Status Popup */}
@@ -1103,24 +966,12 @@ const TaskTimeline = () => {
               <ul>
                 <li>
                   <strong>New cells to create:</strong> {
-                    affectedCells.filter(cell => 
-                      !cellsData.some(existingCell => 
-                        existingCell.taskId === cell.taskId && 
-                        existingCell.month === cell.month && 
-                        existingCell.day === cell.day
-                      )
-                    ).length
+                    affectedCells.filter(cell => !stageByKey.has(cellKey(cell.taskId, cell.date))).length
                   }
                 </li>
                 <li>
                   <strong>Existing cells to update:</strong> {
-                    affectedCells.filter(cell => 
-                      cellsData.some(existingCell => 
-                        existingCell.taskId === cell.taskId && 
-                        existingCell.month === cell.month && 
-                        existingCell.day === cell.day
-                      )
-                    ).length
+                    affectedCells.filter(cell => stageByKey.has(cellKey(cell.taskId, cell.date))).length
                   }
                 </li>
               </ul>

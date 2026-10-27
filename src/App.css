@@ -72,6 +72,32 @@
   padding: 20px;
 }
 
+.import-banner,
+.error-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 20px 15px;
+  padding: 10px 14px;
+  border-radius: 4px;
+}
+
+.import-banner {
+  background-color: #eef5fd;
+  border: 1px solid #4a90e2;
+  color: #343a40;
+}
+
+.import-banner span {
+  margin-right: auto;
+}
+
+.error-banner {
+  background-color: #fdecea;
+  border: 1px solid #e74c3c;
+  color: #a93226;
+}
+
 .timeline-header-container {
   display: flex;
   justify-content: space-between;

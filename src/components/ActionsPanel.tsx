@@ -1,14 +1,17 @@
 import React, { useState } from 'react';
-import { Task, CellData } from './TaskTimeline';
+import { CellData } from './TaskTimeline';
 import AnalysisPanel from './AnalysisPanel';
+import type { PlanStats } from '../../shared/stats.js';
+import type { Task } from '../../shared/types.js';
 
 interface ActionsPanelProps {
   tasks: Task[];
   cellsData: CellData[];
   months: { name: string; days: number }[];
+  stats: PlanStats;
 }
 
-const ActionsPanel: React.FC<ActionsPanelProps> = ({ tasks, cellsData, months }) => {
+const ActionsPanel: React.FC<ActionsPanelProps> = ({ tasks, cellsData, months, stats }) => {
   const [isDownloadPopupOpen, setIsDownloadPopupOpen] = useState(false);
 
   return (
@@ -33,11 +36,7 @@ const ActionsPanel: React.FC<ActionsPanelProps> = ({ tasks, cellsData, months })
       )}
       
       {/* Add the Analysis Panel */}
-      <AnalysisPanel 
-        tasks={tasks}
-        cellsData={cellsData}
-        months={months}
-      />
+      <AnalysisPanel stats={stats} />
     </div>
   );
 };
