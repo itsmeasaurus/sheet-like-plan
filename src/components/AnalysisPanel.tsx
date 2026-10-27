@@ -1,87 +1,18 @@
-import React, { useState, useMemo } from 'react';
-import { Task, CellData } from './TaskTimeline';
+import React, { useState } from 'react';
+import type { PlanStats } from '../../shared/stats.js';
 
 // Define chart types
 type ChartType = 'bar' | 'pie' | 'line';
 
-type TaskStat = {
-  taskId: string;
-  taskName: string;
-  planningCells: number;
-  completedCells: number;
-  failedCells: number;
-  totalCells: number;
-  completionRate: number;
-  failureRate: number;
-};
-
-type MonthStat = {
-  month: string;
-  planningCells: number;
-  completedCells: number;
-  failedCells: number;
-  totalCells: number;
-};
-
-type AnalysisData = {
-  taskStats: TaskStat[];
-  monthlyStats: MonthStat[];
-};
-
 interface AnalysisPanelProps {
-  tasks: Task[];
-  cellsData: CellData[];
-  months: { name: string; days: number }[];
+  stats: PlanStats;
 }
 
-const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ tasks, cellsData, months }) => {
+const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ stats }) => {
   const [chartType, setChartType] = useState<ChartType>('bar');
 
-  // Calculate analysis data whenever tasks or cellsData changes
-  const analysisData = useMemo((): AnalysisData | null => {
-    // Skip if no tasks
-    if (tasks.length === 0) {
-      return null;
-    }
-
-    // Calculate statistics based on the data
-    const taskStats = tasks.map(task => {
-      const taskCells = cellsData.filter(cell => cell.taskId === task.id);
-      const planningCells = taskCells.filter(cell => cell.stage === 'planning').length;
-      const completedCells = taskCells.filter(cell => cell.stage === 'completed').length;
-      const failedCells = taskCells.filter(cell => cell.stage === 'failed').length;
-      const totalCells = planningCells + completedCells + failedCells;
-      
-      return {
-        taskId: task.id,
-        taskName: task.name,
-        planningCells,
-        completedCells,
-        failedCells,
-        totalCells,
-        completionRate: totalCells > 0 ? (completedCells / totalCells) * 100 : 0,
-        failureRate: totalCells > 0 ? (failedCells / totalCells) * 100 : 0
-      };
-    });
-
-    // Calculate monthly statistics
-    const monthlyStats = months.map(month => {
-      const monthCells = cellsData.filter(cell => cell.month === month.name);
-      const planningCells = monthCells.filter(cell => cell.stage === 'planning').length;
-      const completedCells = monthCells.filter(cell => cell.stage === 'completed').length;
-      const failedCells = monthCells.filter(cell => cell.stage === 'failed').length;
-      
-      return {
-        month: month.name,
-        planningCells,
-        completedCells,
-        failedCells,
-        totalCells: planningCells + completedCells + failedCells
-      };
-    });
-
-    return { taskStats, monthlyStats };
-  }, [tasks, cellsData, months]);
+  // Nothing to chart until a task exists
+  const analysisData = stats.taskStats.length > 0 ? stats : null;
 
   // Render the appropriate chart based on chartType
   const renderChart = () => {
@@ -102,7 +33,7 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ tasks, cellsData, months 
   };
 
   // Render a bar chart showing task completion rates
-  const renderBarChart = ({ taskStats }: AnalysisData) => {
+  const renderBarChart = ({ taskStats }: PlanStats) => {
     const maxValue = Math.max(...taskStats.map(stat => stat.totalCells || 0), 1);
 
     return (
@@ -149,7 +80,7 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ tasks, cellsData, months 
   };
 
   // Render a pie chart showing overall distribution
-  const renderPieChart = ({ taskStats }: AnalysisData) => {
+  const renderPieChart = ({ taskStats }: PlanStats) => {
     // Calculate totals across all tasks
     const totalPlanning = taskStats.reduce((sum, stat) => sum + stat.planningCells, 0);
     const totalCompleted = taskStats.reduce((sum, stat) => sum + stat.completedCells, 0);
@@ -195,7 +126,7 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ tasks, cellsData, months 
   };
 
   // Render a line chart showing monthly progress
-  const renderLineChart = ({ monthlyStats }: AnalysisData) => {
+  const renderLineChart = ({ monthlyStats }: PlanStats) => {
     const maxValue = Math.max(...monthlyStats.map(stat => stat.totalCells || 0), 1);
 
     return (

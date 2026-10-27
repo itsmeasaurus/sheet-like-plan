@@ -1,0 +1,14 @@
+services:
+  sheet-like-plan:
+    build: .
+    # Claude Desktop reaches the MCP server with `docker exec sheet-like-plan ...`, so the name must stay fixed
+    container_name: sheet-like-plan
+    ports:
+      # Only this computer can reach the app; there is no login
+      - "127.0.0.1:3000:3000"
+    volumes:
+      - sheet-like-plan-data:/data
+    restart: unless-stopped
+
+volumes:
+  sheet-like-plan-data:
