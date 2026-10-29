@@ -783,26 +783,6 @@
   background-color: transparent; /* Reset to default */
 }
 
-/* Styling for selected month and day headers */
-.month-day-header.selected-header {
-  border: 1px solid #d91f11;
-  box-shadow: 0 0 2px rgba(255, 193, 181, 0.4);
-  position: relative;
-  z-index: 2;
-}
-
-/* Add a highlight to the entire column of the selected day */
-.month-day-header.selected-header::after {
-  content: '';
-  position: absolute;
-  top: 100%;
-  left: 0;
-  width: 100%;
-  height: 2px;
-  background-color: #ffc1b5;
-  z-index: 1;
-}
-
 /* Floating action button and dropdown */
 .floating-action-container {
   position: relative;

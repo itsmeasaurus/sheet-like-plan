@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useMemo } from 'react';
+import React, { useState, useRef, useEffect, useLayoutEffect, useMemo } from 'react';
 import AddTaskForm from './AddTaskForm';
 import ActionsPanel from './ActionsPanel';
 import ImportBanner from './ImportBanner';
@@ -11,6 +11,9 @@ import type { CellRef, IsoDate, Stage, TaskStatus } from '../../shared/types.js'
 export type CellStage = Stage | null;
 
 const cellKey = (taskId: string, date: IsoDate) => `${taskId}|${date}`;
+
+// Where the timeline was last scrolled to, kept per browser
+const SCROLL_LEFT_KEY = 'sheet-like-plan:timeline-scroll-left';
 
 // Type for selected cell
 type SelectedCell = {
@@ -43,9 +46,6 @@ const TaskTimeline = () => {
   const [selectionStart, setSelectionStart] = useState<SelectedCell | null>(null);
   const [isShiftKeyPressed, setIsShiftKeyPressed] = useState(false);
   const [isCtrlKeyPressed, setIsCtrlKeyPressed] = useState(false);
-  // Add state for selected month and day
-  const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
-  const [selectedDay, setSelectedDay] = useState<number | null>(null);
   // The server stores dates; the grid and the export still think in month names and day numbers
   const cellsData = useMemo<CellData[]>(() => (snapshot?.cells ?? []).map(({ taskId, date, stage }) => {
     const { monthIndex, day } = parseIsoDate(date);
@@ -113,6 +113,49 @@ const TaskTimeline = () => {
       taskList.removeEventListener('scroll', handleTaskListScroll);
       timelineGrid.removeEventListener('scroll', handleTimelineGridScroll);
     };
+  }, [isLoaded]);
+
+  // Center today's column in the timeline, without moving the page itself
+  const scrollableTimelineRef = useRef<HTMLDivElement>(null);
+  const scrollToToday = (behavior: ScrollBehavior) => {
+    const timeline = scrollableTimelineRef.current;
+    const today = new Date();
+    const header = timeline?.querySelector(
+      `.month-day-header[data-month="${MONTH_NAMES[today.getMonth()]}"][data-day="${today.getDate()}"]`,
+    );
+    if (!timeline || !header) return;
+    const headerRect = header.getBoundingClientRect();
+    const timelineRect = timeline.getBoundingClientRect();
+    const left = timeline.scrollLeft + headerRect.left - timelineRect.left - (timelineRect.width - headerRect.width) / 2;
+    timeline.scrollTo({ left, behavior });
+  };
+
+  // On load, go back to where the timeline was last scrolled to, or to today on a first visit
+  useLayoutEffect(() => {
+    const timeline = scrollableTimelineRef.current;
+    if (!timeline) return;
+
+    let saved: string | null = null;
+    try {
+      saved = localStorage.getItem(SCROLL_LEFT_KEY);
+    } catch {
+      // Storage can be blocked; today is a fine starting point then
+    }
+    if (saved !== null && Number.isFinite(Number(saved))) {
+      timeline.scrollLeft = Number(saved);
+    } else {
+      scrollToToday('auto');
+    }
+
+    const saveScrollLeft = () => {
+      try {
+        localStorage.setItem(SCROLL_LEFT_KEY, String(timeline.scrollLeft));
+      } catch {
+        // Not remembering the position is harmless
+      }
+    };
+    timeline.addEventListener('scroll', saveScrollLeft);
+    return () => timeline.removeEventListener('scroll', saveScrollLeft);
   }, [isLoaded]);
 
   // Handle click outside to clear selection
@@ -188,10 +231,6 @@ const TaskTimeline = () => {
     const cell = { taskId, month, day };
     setIsSelecting(true);
     setSelectionStart(cell);
-    
-    // Set the selected month and day
-    setSelectedMonth(month);
-    setSelectedDay(day);
 
     // If Ctrl/Cmd key is pressed, add to selection
     if (isCtrlKeyPressed) {
@@ -466,19 +505,7 @@ const TaskTimeline = () => {
   };
 
   // Navigate to today's date
-  const navigateToToday = () => {
-    const today = new Date();
-    const currentMonth = MONTH_NAMES[today.getMonth()];
-    const currentDay = today.getDate();
-    
-    // Today's column is always marked, so only scroll to it (the selected day stays as it is)
-    setTimeout(() => {
-      const todayElement = document.querySelector(`.month-day-header[data-month="${currentMonth}"][data-day="${currentDay}"]`);
-      if (todayElement) {
-        todayElement.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'center' });
-      }
-    }, 100);
-  };
+  const navigateToToday = () => scrollToToday('smooth');
 
   // Close status popup when clicking outside
   useEffect(() => {
@@ -647,8 +674,9 @@ const TaskTimeline = () => {
             ))}
           </div>
         </div>
-        <div 
+        <div
           className="scrollable-timeline"
+          ref={scrollableTimelineRef}
           onMouseUp={handleMouseUp}
           onMouseLeave={handleMouseUp}
         >
@@ -661,8 +689,8 @@ const TaskTimeline = () => {
                     <div 
                       key={`${month.name}-${day}`} 
                       className={`month-day-header ${day === 1 ? 'first-of-month' : ''} ${
-                        month.name === selectedMonth && day === selectedDay ? 'selected-header' : ''
-                      } ${isWeekendDay ? 'weekend' : ''} ${isToday(month.name, day) ? 'today' : ''}`}
+                        isWeekendDay ? 'weekend' : ''
+                      } ${isToday(month.name, day) ? 'today' : ''}`}
                       data-month={month.name}
                       data-day={day}
                     >
